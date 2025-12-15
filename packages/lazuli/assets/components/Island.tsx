@@ -1,4 +1,5 @@
 import { FC } from "hono/jsx";
+import { timeStamp } from "node:console";
 
 const Island: FC<{ path: string; component: any; data: any }> = (props) => {
   const id = "island-" + Math.random().toString(36).slice(2);

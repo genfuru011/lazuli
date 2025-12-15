@@ -3,7 +3,8 @@
     "hono": "npm:hono@^4",
     "hono/": "npm:hono@^4/",
     "hono/jsx": "npm:hono@^4/jsx",
-    "hono/jsx/dom": "npm:hono@^4/jsx/dom"
+    "hono/jsx/dom": "npm:hono@^4/jsx/dom",
+    "lazuli/island": "../lazuli/assets/components/Island.tsx"
   },
   "compilerOptions": {
     "jsx": "react-jsx",

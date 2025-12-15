@@ -1,5 +1,5 @@
 import Counter from "../../components/Counter.tsx";
-import Island from "../../components/Island.tsx";
+import Island from "lazuli/island";
 
 type User = {
   id: number;

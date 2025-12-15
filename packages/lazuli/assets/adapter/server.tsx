@@ -1,7 +1,7 @@
 import { Hono } from "npm:hono@^4";
 import { html } from "npm:hono@^4/html";
 import { parseArgs } from "jsr:@std/cli@^0.224.0/parse-args";
-import { join, toFileUrl, resolve, extname, dirname } from "jsr:@std/path@^0.224.0";
+import { join, toFileUrl, resolve, extname, dirname, fromFileUrl } from "jsr:@std/path@^0.224.0";
 import { ensureDir } from "jsr:@std/fs@^0.224.0";
 import * as esbuild from "https://deno.land/x/esbuild@v0.20.1/mod.js";
 
@@ -87,6 +87,8 @@ app.post("/render", async (c) => {
           const subpath = key.replace("hono/", "");
           importMap.imports[key] = `https://esm.sh/hono@4/${subpath}?target=deno`;
         }
+      } else if (key === "lazuli/island") {
+        importMap.imports[key] = "/assets/components/Island.tsx";
       } else if (typeof value === "string" && value.startsWith("npm:")) {
         // Convert npm:package@version to https://esm.sh/package@version for browser
         const pkg = value.replace("npm:", "");
@@ -123,7 +125,18 @@ app.get("/assets/*", async (c) => {
   await initEsbuild();
   const path = c.req.path.replace("/assets/", "");
   const appRoot = resolve(args["app-root"]);
-  const filePath = join(appRoot, "app", path);
+  let filePath = join(appRoot, "app", path);
+
+  // Check if file exists in app root, otherwise fallback to Gem assets
+  try {
+    await Deno.stat(filePath);
+  } catch {
+    // Fallback to Gem assets
+    // server.tsx is in packages/lazuli/assets/adapter/
+    const adapterDir = dirname(fromFileUrl(import.meta.url));
+    const gemAssetsDir = resolve(adapterDir, "..");
+    filePath = join(gemAssetsDir, path);
+  }
 
   try {
     const content = await Deno.readTextFile(filePath);
