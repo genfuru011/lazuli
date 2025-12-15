@@ -9,10 +9,18 @@ module Lazuli
     def call(env)
       req = Rack::Request.new(env)
       path = req.path_info
-
-      # Simple routing: /users -> UsersResource#index
+      
       # Remove leading slash
       path = path[1..-1] if path.start_with?("/")
+
+      # Asset Proxy
+      if path.start_with?("assets/")
+        content = Lazuli::Renderer.asset("/" + path)
+        # TODO: Set correct content type based on extension
+        return [200, { "content-type" => "application/javascript" }, [content]]
+      end
+
+      # Simple routing: /users -> UsersResource#index
       path = "home" if path.empty?
 
       resource_name = "#{path.capitalize}Resource"

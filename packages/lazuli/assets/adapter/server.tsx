@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { renderToString } from "solid-js/web";
 import { parseArgs } from "@std/cli/parse-args";
-import { join, toFileUrl, resolve } from "@std/path";
+import { join, toFileUrl, resolve, extname } from "@std/path";
+import * as esbuild from "esbuild";
 
 // Hack to force SolidJS into server mode?
 // Or mock DOM for h?
@@ -19,6 +20,16 @@ const args = parseArgs(Deno.args, {
     "app-root": Deno.cwd(),
   },
 });
+
+// Initialize esbuild
+let esbuildInitialized = false;
+async function initEsbuild() {
+  if (esbuildInitialized) return;
+  await esbuild.initialize({
+    worker: false,
+  });
+  esbuildInitialized = true;
+}
 
 const app = new Hono();
 
@@ -60,9 +71,50 @@ app.post("/render", async (c) => {
   }
 });
 
-// Asset Server (Placeholder)
-app.get("/assets/*", (c) => {
-  return c.text("Assets serving not implemented yet", 501);
+// Asset Server
+app.get("/assets/*", async (c) => {
+  await initEsbuild();
+  const path = c.req.path.replace("/assets/", "");
+  const appRoot = resolve(args["app-root"]);
+  // Map /assets/components/Counter.tsx -> app/components/Counter.tsx
+  // Map /assets/pages/users/index.tsx -> app/pages/users/index.tsx
+  const filePath = join(appRoot, "app", path);
+
+  try {
+    // Simple plugin to resolve npm: imports to esm.sh for browser
+    const npmResolverPlugin = {
+      name: 'npm-resolver',
+      setup(build: any) {
+        build.onResolve({ filter: /^npm:/ }, (args: any) => {
+          const pkg = args.path.replace(/^npm:/, "");
+          return { path: `https://esm.sh/${pkg}`, external: true };
+        });
+        
+        // Handle bare specifiers for SolidJS
+        build.onResolve({ filter: /^solid-js/ }, (args: any) => {
+          return { path: `https://esm.sh/${args.path}`, external: true };
+        });
+      },
+    };
+
+    const result = await esbuild.build({
+      entryPoints: [filePath],
+      bundle: true,
+      write: false,
+      format: "esm",
+      platform: "browser",
+      plugins: [npmResolverPlugin],
+      jsx: "automatic",
+      jsxImportSource: "solid-js", // Use standard solid-js for browser
+    });
+
+    return c.body(result.outputFiles[0].text, 200, {
+      "Content-Type": "application/javascript",
+    });
+  } catch (e) {
+    console.error("Build error:", e);
+    return c.text(e.toString(), 500);
+  }
 });
 
 // Start the server

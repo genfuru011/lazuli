@@ -32,7 +32,12 @@ export function jsx(tag: any, props: any) {
     } else if (child && typeof child === "object" && child.t) {
       childrenStr += child.t.join("");
     } else if (child !== undefined && child !== null && child !== false && child !== true) {
-      childrenStr += escape(String(child));
+      // Don't escape content of script and style tags
+      if (tag === "script" || tag === "style") {
+        childrenStr += String(child);
+      } else {
+        childrenStr += escape(String(child));
+      }
     }
   };
   
