@@ -1,45 +1,45 @@
-# Lazuli Internal Architecture
+# アーキテクチャ設計
 
-This document details the implementation design of the Lazuli framework, specifically focusing on the interaction between the Ruby and Deno layers.
+Lazuliは、Rubyの堅牢なバックエンドエコシステムと、Deno/Honoのモダンなフロントエンドレンダリング能力を組み合わせたハイブリッドフレームワークです。
 
-## 1. Process Model
+## 1. プロセスモデル
 
-Lazuli operates on a **Master-Worker** process model to maintain the "One Server" philosophy.
+Lazuliは「One Server」の哲学を維持するために、**Master-Worker** プロセスモデルで動作します。
 
 *   **Master Process (Ruby):**
-    *   Entry point of the application (`config.ru`).
-    *   Handles HTTP requests from the outside (Nginx/Caddy).
-    *   Manages the lifecycle of the Deno process.
-    *   Responsible for business logic, database access, and routing.
+    *   アプリケーションのエントリーポイント (`config.ru`)。
+    *   外部からのHTTPリクエストを処理します。
+    *   Denoプロセスのライフサイクルを管理します。
+    *   ビジネスロジック、データベースアクセス、ルーティングを担当します。
 *   **Worker Process (Deno):**
-    *   Spawned and monitored by the Ruby process.
-    *   Listens on a Unix Domain Socket (e.g., `tmp/sockets/lazuli-renderer.sock`).
-    *   Responsible for SSR (SolidJS) and Asset bundling (esbuild).
-    *   Stateless (mostly).
+    *   Rubyプロセスによって起動・監視されます。
+    *   Unix Domain Socket (例: `tmp/sockets/lazuli-renderer.sock`) で待機します。
+    *   **Hono JSX** を使用したSSR (Server-Side Rendering) と、アセットのオンデマンド変換を担当します。
+    *   基本的にステートレスです。
 
-### Boot Sequence
+### 起動シーケンス
 
-1.  **Ruby Boot:** `bundle exec rackup` starts the Ruby server.
-2.  **Lazuli Init:** `Lazuli::App` initializes.
-3.  **Socket Check:** Ruby checks for existing socket files and cleans them up.
-4.  **Deno Spawn:** Ruby spawns `deno run -A --unstable-net assets/adapter/server.ts --socket tmp/sockets/lazuli-renderer.sock`.
-5.  **Health Check:** Ruby waits for the socket to be ready (connects and pings).
-6.  **Ready:** Server starts accepting HTTP traffic.
+1.  **Ruby Boot:** `bundle exec rackup` でRubyサーバーが起動。
+2.  **Lazuli Init:** `Lazuli::App` が初期化されます。
+3.  **Socket Check:** Rubyは既存のソケットファイルを確認し、クリーンアップします。
+4.  **Deno Spawn:** Rubyは `deno run -A --unstable-net ...` コマンドでDenoプロセスを起動します。
+5.  **Health Check:** Rubyはソケットの準備ができるまで待機します（接続確認）。
+6.  **Ready:** サーバーがHTTPトラフィックの受け付けを開始します。
 
-## 2. IPC Protocol (Ruby <-> Deno)
+## 2. IPCプロトコル (Ruby <-> Deno)
 
-Communication happens over HTTP via Unix Domain Socket. Ruby acts as the HTTP Client, and Deno acts as the HTTP Server (Hono).
+通信はUnix Domain Socket上のHTTPで行われます。RubyがHTTPクライアント、DenoがHTTPサーバー (Hono) として動作します。
 
-### Endpoints
+### エンドポイント
 
 #### `POST /render`
-Renders a SolidJS page component to HTML.
+Hono JSXコンポーネントをHTMLにレンダリングします。
 
 *   **Request (JSON):**
     ```json
     {
-      "page": "users/index",  // Path to component relative to app/pages
-      "props": {              // Data object (serialized Lazuli::Structs)
+      "path": "UsersIndex",   // app/views/UsersIndex.tsx へのパス
+      "props": {              // データオブジェクト (シリアライズされたLazuli::Structs)
         "users": [
           { "id": 1, "name": "Alice" },
           { "id": 2, "name": "Bob" }
@@ -60,13 +60,13 @@ Renders a SolidJS page component to HTML.
     ```
 
 #### `GET /assets/*`
-Serves static assets or on-demand compiled JavaScript.
+静的アセットまたはオンデマンドでコンパイルされたJavaScriptを提供します。
 
-*   **Usage:**
-    *   In **Development**: Ruby proxies requests starting with `/assets/` to the Deno socket.
-    *   In **Production**: Nginx/Caddy should serve precompiled assets directly from disk, bypassing Ruby/Deno for performance.
+*   **機能:**
+    *   **オンデマンドトランスパイル:** `.tsx` ファイルへのリクエストを受け取ると、ブラウザで実行可能なJavaScriptに変換して返します。
+    *   **Import Map解決:** サーバーサイドの `npm:` インポートを、ブラウザ互換の `https://esm.sh/` URLに自動的に書き換えます。これにより、複雑なバンドル設定なしでライブラリを使用できます。
 
-## 3. Request Lifecycle
+## 3. リクエストライフサイクル
 
 ```mermaid
 sequenceDiagram
@@ -77,26 +77,24 @@ sequenceDiagram
 
     Browser->>Ruby (Router): GET /users
     Ruby (Router)->>Ruby (Resource): UsersResource#index
-    Ruby (Resource)->>Ruby (Resource): Fetch Data (Repository)
-    Ruby (Resource)->>Deno (Renderer): POST /render (page="users/index", props=...)
+    Ruby (Resource)->>Ruby (Resource): データ取得 (Repository)
+    Ruby (Resource)->>Deno (Renderer): POST /render (path="UsersIndex", props=...)
     Deno (Renderer)-->>Ruby (Resource): HTML String
     Ruby (Resource)-->>Browser: 200 OK (HTML)
 ```
 
-## 4. Hot Reloading (Development)
+## 4. Island Architecture
 
-*   **Ruby Changes:** `rerun` or similar gem restarts the Ruby process. Deno process is killed and restarted.
-*   **Deno/Frontend Changes:**
-    *   Deno watches `app/` directory.
-    *   When a `.tsx` file changes, Deno clears its internal module cache.
-    *   Next request to `/render` uses the new code.
-    *   Browser needs to reload (Turbo Drive handles this or manual reload).
+Lazuliは **Island Architecture** を採用しており、ページ全体ではなく、必要な部分だけをインタラクティブにします。
 
-## 5. Directory Structure Mapping
+*   **サーバーサイド:** `<Island />` コンポーネントは、ラップされたコンポーネントを静的HTMLとしてレンダリングし、同時にクライアントサイドでのHydration用の `<script>` タグを出力します。
+*   **クライアントサイド:** ブラウザは生成されたスクリプトを実行し、`hono/jsx/dom` を使用して指定されたコンポーネントをマウントします。
 
-| Concept | Ruby Path | Deno Path |
+## 5. ディレクトリ構成マッピング
+
+| 概念 | Ruby パス | Deno パス |
 | :--- | :--- | :--- |
-| **Structs** | `app/structs/*.rb` | `app/types/*.d.ts` (Generated) |
+| **Structs** | `app/structs/*.rb` | `app/types/*.d.ts` (推奨) |
 | **Resources** | `app/resources/*_resource.rb` | N/A |
-| **Pages** | N/A | `app/pages/*.tsx` |
-| **Components** | N/A | `app/components/*.tsx` |
+| **Views** | N/A | `app/views/*.tsx` |
+| **Components** | N/A | `app/views/components/*.tsx` |
