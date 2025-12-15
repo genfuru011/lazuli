@@ -3,6 +3,7 @@
     "solid-js": "npm:solid-js@^1.8",
     "solid-js/web": "npm:solid-js@^1.8/web",
     "solid-js/h": "npm:solid-js@^1.8/h",
+    "solid-js/h/jsx-runtime": "npm:solid-js@^1.8/h/jsx-runtime",
     "solid-js/jsx-runtime": "npm:solid-js@^1.8/h/jsx-runtime"
   }
 }

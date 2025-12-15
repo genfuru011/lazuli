@@ -218,6 +218,13 @@ app.get("/assets/*", async (c) => {
 // Start the server
 if (args.socket) {
   // Unix Domain Socket
+  try {
+    await Deno.remove(args.socket);
+  } catch (e) {
+    if (!(e instanceof Deno.errors.NotFound)) {
+      console.error(e);
+    }
+  }
   Deno.serve({
     path: args.socket,
     handler: app.fetch,
