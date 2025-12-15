@@ -1,8 +1,10 @@
 import { Hono } from "hono";
 import { renderToString } from "solid-js/web";
 import { parseArgs } from "@std/cli/parse-args";
-import { join, toFileUrl, resolve, extname } from "@std/path";
+import { join, toFileUrl, resolve, extname, dirname } from "@std/path";
+import { ensureDir } from "@std/fs";
 import * as esbuild from "esbuild";
+import { denoPlugins } from "esbuild-deno-loader";
 
 // Hack to force SolidJS into server mode?
 // Or mock DOM for h?
@@ -123,45 +125,48 @@ app.get("/assets/vendor/*", async (c) => {
     const hasDefault = !!mod.default;
 
     // Create a virtual entry point that exports everything from the package
-    let entryPoint = `export * from "${specifier}";`;
+    // Use pkgName directly so esbuild resolves it via import map
+    let entryPointContent = `export * from "${pkgName}";`;
     if (hasDefault) {
-      entryPoint += ` export { default } from "${specifier}";`;
+      entryPointContent += ` export { default } from "${pkgName}";`;
     }
     
-    // Simple plugin to resolve npm: imports to esm.sh for browser
-    const npmResolverPlugin = {
-      name: 'npm-resolver',
-      setup(build: any) {
-        build.onResolve({ filter: /^npm:/ }, (args: any) => {
-          let pkg = args.path.replace(/^npm:/, "");
-          
-          // Ensure solid-js is treated as external dependency by esm.sh
-          // This forces esm.sh to generate 'import ... from "solid-js"'
-          // which allows our Import Map to take control and dedupe the instance.
-          const isSolidLib = pkg.includes("solid-js");
-          const isCore = pkg === "solid-js" || pkg.match(/^solid-js@/);
-          
-          let url = `https://esm.sh/${pkg}`;
-          if (isSolidLib && !isCore) {
-             url += "?external=solid-js";
+    // Write entry point to a temporary file to avoid esbuild-deno-loader stdin issues
+    const tmpDir = join(appRoot, "tmp", "vendor_build");
+    await ensureDir(tmpDir);
+    // Sanitize pkgName for filename
+    const safeName = pkgName.replace(/\//g, "_");
+    const entryPointPath = join(tmpDir, `${safeName}.ts`);
+    await Deno.writeTextFile(entryPointPath, entryPointContent);
+
+    // Custom plugin to handle exact match externals
+    const externalPlugin = {
+      name: 'external-plugin',
+      setup(build: esbuild.PluginBuild) {
+        const externals = Object.keys(userImports).filter(k => k !== pkgName);
+        build.onResolve({ filter: /.*/ }, args => {
+          if (externals.includes(args.path)) {
+            return { path: args.path, external: true };
           }
-          
-          return { path: url, external: true };
         });
       },
     };
 
     const result = await esbuild.build({
-      stdin: {
-        contents: entryPoint,
-        resolveDir: appRoot,
-        loader: "ts",
-      },
+      plugins: [
+        externalPlugin,
+        ...denoPlugins({
+        loader: "native",
+        importMapURL: toFileUrl(resolve(appRoot, "deno.json")).href,
+      })],
+      entryPoints: [entryPointPath],
       bundle: true,
       write: false,
       format: "esm",
       platform: "browser",
-      plugins: [npmResolverPlugin],
+      // Externalize other vendor libs defined in deno.json
+      // This ensures solid-js/web imports solid-js from /assets/vendor/solid-js
+      external: [], // Handled by plugin
       jsx: "automatic",
     });
 
@@ -184,30 +189,11 @@ app.get("/assets/*", async (c) => {
   const filePath = join(appRoot, "app", path);
 
   try {
-    // Simple plugin to resolve npm: imports to esm.sh for browser
-    const npmResolverPlugin = {
-      name: 'npm-resolver',
-      setup(build: any) {
-        build.onResolve({ filter: /^npm:/ }, (args: any) => {
-          let pkg = args.path.replace(/^npm:/, "");
-          
-          // Ensure solid-js is treated as external dependency by esm.sh
-          // This forces esm.sh to generate 'import ... from "solid-js"'
-          // which allows our Import Map to take control and dedupe the instance.
-          const isSolidLib = pkg.includes("solid-js");
-          const isCore = pkg === "solid-js" || pkg.match(/^solid-js@/);
-          
-          let url = `https://esm.sh/${pkg}`;
-          if (isSolidLib && !isCore) {
-             url += "?external=solid-js";
-          }
-          
-          return { path: url, external: true };
-        });
-      },
-    };
-
     const result = await esbuild.build({
+      plugins: [...denoPlugins({
+        loader: "native",
+        importMapURL: toFileUrl(resolve(appRoot, "deno.json")).href,
+      })],
       entryPoints: [filePath],
       bundle: true,
       write: false,
@@ -216,7 +202,6 @@ app.get("/assets/*", async (c) => {
       // Externalize everything defined in user's deno.json
       // They will be resolved via Import Map to /assets/vendor/...
       external: Object.keys(await loadUserImports(appRoot)),
-      plugins: [npmResolverPlugin],
       jsx: "automatic",
       jsxImportSource: "solid-js",
     });
