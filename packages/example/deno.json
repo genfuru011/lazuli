@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "solid-js": "npm:solid-js@^1.8",
+    "solid-js/web": "npm:solid-js@^1.8/web",
+    "solid-js/jsx-runtime": "npm:solid-js@^1.8/h/jsx-runtime"
+  }
+}

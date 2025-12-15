@@ -31,6 +31,18 @@ async function initEsbuild() {
   esbuildInitialized = true;
 }
 
+// Load user's deno.json
+async function loadUserImports(appRoot: string) {
+  try {
+    const denoJsonPath = join(appRoot, "deno.json");
+    const content = await Deno.readTextFile(denoJsonPath);
+    const json = JSON.parse(content);
+    return json.imports || {};
+  } catch {
+    return {};
+  }
+}
+
 const app = new Hono();
 
 // RPC Endpoint: Render a page
@@ -64,9 +76,81 @@ app.post("/render", async (c) => {
       </LayoutComponent>
     ));
 
-    return c.html(`<!DOCTYPE html>${body}`);
+    // Generate Import Map from deno.json
+    const userImports = await loadUserImports(appRoot);
+    const importMap = {
+      imports: {} as Record<string, string>
+    };
+
+    // Map each import to the vendor endpoint
+    for (const key of Object.keys(userImports)) {
+      importMap.imports[key] = `/assets/vendor/${key}`;
+    }
+
+    // Inject Import Map into HEAD
+    const html = `<!DOCTYPE html>${body}`;
+    const importMapScript = `<script type="importmap">${JSON.stringify(importMap)}</script>`;
+    
+    // Simple injection: replace </head> with script + </head>
+    // If no head, append to body (fallback)
+    const injectedHtml = html.replace("</head>", `${importMapScript}</head>`);
+
+    return c.html(injectedHtml);
   } catch (e) {
     console.error("Render error:", e);
+    return c.text(e.toString(), 500);
+  }
+});
+
+// Vendor Asset Server
+app.get("/assets/vendor/*", async (c) => {
+  await initEsbuild();
+  const pkgName = c.req.path.replace("/assets/vendor/", "");
+  const appRoot = resolve(args["app-root"]);
+  const userImports = await loadUserImports(appRoot);
+  
+  // Resolve package specifier from deno.json
+  // e.g. "solid-js" -> "npm:solid-js@^1.8"
+  const specifier = userImports[pkgName];
+
+  if (!specifier) {
+    return c.text(`Package not found in deno.json: ${pkgName}`, 404);
+  }
+
+  try {
+    // Create a virtual entry point that exports everything from the package
+    const entryPoint = `export * from "${specifier}"; export { default } from "${specifier}";`;
+    
+    // Simple plugin to resolve npm: imports to esm.sh for browser
+    const npmResolverPlugin = {
+      name: 'npm-resolver',
+      setup(build: any) {
+        build.onResolve({ filter: /^npm:/ }, (args: any) => {
+          const pkg = args.path.replace(/^npm:/, "");
+          return { path: `https://esm.sh/${pkg}`, external: true };
+        });
+      },
+    };
+
+    const result = await esbuild.build({
+      stdin: {
+        contents: entryPoint,
+        resolveDir: appRoot,
+        loader: "ts",
+      },
+      bundle: true,
+      write: false,
+      format: "esm",
+      platform: "browser",
+      plugins: [npmResolverPlugin],
+      jsx: "automatic",
+    });
+
+    return c.body(result.outputFiles[0].text, 200, {
+      "Content-Type": "application/javascript",
+    });
+  } catch (e) {
+    console.error("Vendor build error:", e);
     return c.text(e.toString(), 500);
   }
 });
@@ -87,7 +171,9 @@ app.get("/assets/*", async (c) => {
       write: false,
       format: "esm",
       platform: "browser",
-      external: ["solid-js", "solid-js/*"],
+      // Externalize everything defined in user's deno.json
+      // They will be resolved via Import Map to /assets/vendor/...
+      external: Object.keys(await loadUserImports(appRoot)),
       jsx: "automatic",
       jsxImportSource: "solid-js",
     });
