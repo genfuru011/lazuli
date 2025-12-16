@@ -7,7 +7,12 @@ module Lazuli
     end
 
     def self.rpc(name, options = {})
-      # TODO: Store metadata for TypeScript generation
+      @rpc_definitions ||= {}
+      @rpc_definitions[name.to_sym] = options
+    end
+
+    def self.rpc_definitions
+      @rpc_definitions || {}
     end
 
     # Helper to render a page
