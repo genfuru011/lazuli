@@ -91,6 +91,20 @@ class TurboStreamResourceTest < Minitest::Test
     Lazuli::Renderer.define_singleton_method(:render_turbo_stream, &original)
   end
 
+  def test_accept_star_does_not_enable_turbo_stream
+    req = RequestStub.new("*/*")
+    status, headers, _body = MyResource.new({}, request: req).create
+    assert_equal 303, status
+    assert_equal "/", headers["location"]
+  end
+
+  def test_accept_html_and_star_does_not_enable_turbo_stream
+    req = RequestStub.new("text/html, */*")
+    status, headers, _body = MyResource.new({}, request: req).create
+    assert_equal 303, status
+    assert_equal "/", headers["location"]
+  end
+
   def test_redirect_to_defaults_to_303_without_request
     status, headers, _body = Lazuli::Resource.new.redirect_to("/x")
     assert_equal 303, status
