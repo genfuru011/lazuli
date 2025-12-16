@@ -1,6 +1,8 @@
 require "fileutils"
 require "date"
 
+require_relative "struct"
+
 module Lazuli
   class TypeGenerator
     TYPE_MAP = {
@@ -35,7 +37,7 @@ module Lazuli
 
     def load_app_structs
       $LOAD_PATH.unshift(@app_root) unless $LOAD_PATH.include?(@app_root)
-      files = Dir[File.join(@app_root, "app", "**", "*.rb")].sort
+      files = Dir[File.join(@app_root, "app", "structs", "**", "*.rb")].sort
       remaining = files.dup
 
       loop do
