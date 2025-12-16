@@ -16,8 +16,8 @@ module Lazuli
       # Remove leading slash
       path = path[1..-1] if path.start_with?("/")
 
-      # Asset Proxy
-      if path.start_with?("assets/")
+      # Asset/Dev Proxy
+      if path.start_with?("assets/") || path.start_with?("__lazuli/")
         response = Lazuli::Renderer.asset("/" + path)
         status = response[:status] || 500
         headers = normalize_headers(response[:headers])
