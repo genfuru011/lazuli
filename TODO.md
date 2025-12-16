@@ -12,7 +12,7 @@
 - [x] **TypeScript型定義の自動生成**
     - [x] `Lazuli::Struct` から `client.d.ts` を生成する機能（`lazuli types`）
     - [x] Struct変更検知→自動生成（`lazuli server --reload` の再起動時に追従）
-- [ ] **Live Reload の高度化**
+- [x] **Live Reload の高度化**
     - [x] EventSource (SSE) での通知（ポーリング廃止）
     - [x] ファイル変更をサーバープロセス再起動なしでpushする（Deno/Rubyのwatch統合）
 - [ ] **TypeGenerator の精緻化**
@@ -29,6 +29,10 @@
     - [ ] ページ遷移の高速化 (SPAライクな挙動)
 
 ## 優先度: 中 (Enhancements)
+
+- [x] **Sorbet/Ruby LSP の開発環境整備**
+    - [x] monorepo rootにGemfile/sorbet configを配置（VSCodeで動作）
+    - [x] Rack向けの最小RBI shim追加
 
 - [ ] **Islands Architecture の自動化**
     - [ ] `"use hydration"` ディレクティブの自動検出
