@@ -23,8 +23,11 @@ module Lazuli
     end
 
     def turbo_stream?
+      # Turbo uses Accept: text/vnd.turbo-stream.html for stream responses.
       accept = request&.get_header("HTTP_ACCEPT").to_s
       return true if accept.include?("text/vnd.turbo-stream.html")
+
+      # Fallback for manual testing / non-browser clients.
       params[:format].to_s == "turbo_stream"
     end
 
@@ -32,7 +35,7 @@ module Lazuli
       stream = Lazuli::TurboStream.new
       yield stream
       body = Lazuli::Renderer.render_turbo_stream(normalize_value(stream.operations))
-      [200, { "content-type" => "text/vnd.turbo-stream.html" }, [body]]
+      [200, { "content-type" => "text/vnd.turbo-stream.html", "vary" => "accept" }, [body]]
     end
 
     def redirect_to(location, status: 303)

@@ -15,6 +15,12 @@ class TurboStreamResourceTest < Minitest::Test
     end
   end
 
+  class EmptyRequest
+    def get_header(_key)
+      nil
+    end
+  end
+
   class MyResource < Lazuli::Resource
     def create
       if turbo_stream?
@@ -42,6 +48,7 @@ class TurboStreamResourceTest < Minitest::Test
     status, headers, body = MyResource.new({}, request: req).create
     assert_equal 200, status
     assert_equal "text/vnd.turbo-stream.html", headers["content-type"]
+    assert_equal "accept", headers["vary"]
     assert_includes body.join, "turbo-stream"
 
     assert_kind_of Array, captured
@@ -52,5 +59,22 @@ class TurboStreamResourceTest < Minitest::Test
     assert_equal :remove, captured[3][:action]
   ensure
     Lazuli::Renderer.define_singleton_method(:render_turbo_stream, &original)
+  end
+
+  def test_format_param_enables_turbo_stream
+    original = Lazuli::Renderer.method(:render_turbo_stream)
+    Lazuli::Renderer.define_singleton_method(:render_turbo_stream) { |_ops| "<turbo-stream></turbo-stream>" }
+
+    status, headers, _body = MyResource.new({ format: "turbo_stream" }, request: EmptyRequest.new).create
+    assert_equal 200, status
+    assert_equal "text/vnd.turbo-stream.html", headers["content-type"]
+  ensure
+    Lazuli::Renderer.define_singleton_method(:render_turbo_stream, &original)
+  end
+
+  def test_redirect_to_defaults_to_303
+    status, headers, _body = Lazuli::Resource.new.redirect_to("/x")
+    assert_equal 303, status
+    assert_equal "/x", headers["location"]
   end
 end
