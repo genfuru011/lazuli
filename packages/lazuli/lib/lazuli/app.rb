@@ -47,10 +47,16 @@ module Lazuli
         # Try to find the resource class
         # In a real app, we would autoload these
         resource_class = Object.const_get(resource_name)
-        resource = resource_class.new(req.params)
+
+        # Merge Rack params with path params (/users/:id) and normalize keys to symbols.
+        merged_params = req.params.dup
+        merged_params["id"] ||= segments[1] if segments.length > 1 && !segments[1].to_s.empty?
+        merged_params = merged_params.transform_keys { |k| k.to_s.to_sym }
+
+        resource = resource_class.new(merged_params)
 
         unless resource.respond_to?(action)
-          return [404, { "content-type" => "text/plain" }, ["Action not found: #{resource_name}##{action}"]]
+          return [405, { "content-type" => "text/plain" }, ["Action not allowed: #{resource_name}##{action}"]]
         end
 
         html = resource.public_send(action)
