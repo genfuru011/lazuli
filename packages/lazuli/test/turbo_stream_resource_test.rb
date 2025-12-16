@@ -72,6 +72,25 @@ class TurboStreamResourceTest < Minitest::Test
     Lazuli::Renderer.define_singleton_method(:render_turbo_stream, &original)
   end
 
+  def test_accept_q_0_disables_turbo_stream
+    req = RequestStub.new("text/vnd.turbo-stream.html;q=0, text/html")
+    status, headers, _body = MyResource.new({}, request: req).create
+    assert_equal 303, status
+    assert_equal "/", headers["location"]
+  end
+
+  def test_accept_with_q_enables_turbo_stream
+    original = Lazuli::Renderer.method(:render_turbo_stream)
+    Lazuli::Renderer.define_singleton_method(:render_turbo_stream) { |_ops| "<turbo-stream></turbo-stream>" }
+
+    req = RequestStub.new("text/html;q=1.0, text/vnd.turbo-stream.html;q=0.9")
+    status, headers, _body = MyResource.new({}, request: req).create
+    assert_equal 200, status
+    assert_equal "text/vnd.turbo-stream.html", headers["content-type"]
+  ensure
+    Lazuli::Renderer.define_singleton_method(:render_turbo_stream, &original)
+  end
+
   def test_redirect_to_defaults_to_303_without_request
     status, headers, _body = Lazuli::Resource.new.redirect_to("/x")
     assert_equal 303, status

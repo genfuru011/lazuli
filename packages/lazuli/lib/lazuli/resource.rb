@@ -22,13 +22,16 @@ module Lazuli
       Lazuli::Renderer.render(page, normalize_value(props))
     end
 
+    TURBO_STREAM_MIME = "text/vnd.turbo-stream.html"
+
     def turbo_stream?
       # Turbo uses Accept: text/vnd.turbo-stream.html for stream responses.
       accept = request&.get_header("HTTP_ACCEPT").to_s
-      return true if accept.include?("text/vnd.turbo-stream.html")
+      return true if accepts_mime?(accept, TURBO_STREAM_MIME)
 
       # Fallback for manual testing / non-browser clients.
-      params[:format].to_s == "turbo_stream"
+      fmt = params[:format].to_s
+      fmt == "turbo_stream" || fmt == "turbo-stream"
     end
 
     def turbo_stream
@@ -50,6 +53,24 @@ module Lazuli
     end
 
     private
+
+    def accepts_mime?(accept, mime)
+      return false if accept.nil? || accept.strip.empty?
+
+      accept.split(",").any? do |part|
+        type, *params = part.strip.split(";")
+        next false unless type.strip == mime
+
+        q = 1.0
+        params.each do |p|
+          k, v = p.strip.split("=", 2)
+          next unless k == "q"
+          q = v.to_f
+        end
+
+        q > 0
+      end
+    end
 
     def normalize_value(value)
       if value.is_a?(Hash)
