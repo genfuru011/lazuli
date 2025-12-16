@@ -20,6 +20,18 @@
     - [x] Union型（非配列含む）の正確化（`Lazuli::Types.any_of` 等）
     - [x] 型の重複出力回避とテスト追加
     - [x] 名前衝突ガード（例: `Admin::User` と `User`）
+- [ ] **次の実装順（提案）**
+    - [ ] 1) ルーティング/params（path params + 404/405）
+    - [ ] 2) Resource RPC メタデータ保持（`Resource.rpc`）
+    - [ ] 3) Turbo Streams MVP（最小API + example）
+
+- [ ] **ルーティング/params の改善**
+    - [ ] `/users/123` の `123` を `params[:id]` に渡す（path params）
+    - [ ] ルート解決の責務整理（`Resource`名/`action`解決、405/404の切り分け）
+- [ ] **Resource RPC メタデータの整備**
+    - [ ] `Resource.rpc` で定義を保持（name/returns/params など）
+    - [ ] `lazuli types` に RPC 型（request/response）やクライアントスタブ生成を追加するか検討
+
 - [ ] **ServerRunner 改善**
     - [x] ウォッチ対象に config/deno.json を含める
     - [x] 終了時にDeno/Rackを停止しソケットをクリーンアップ（基本）
@@ -29,12 +41,7 @@
     - [x] 方針: Deno管理は `Lazuli::ServerRunner`（CLI）に集約し、`Lazuli::App` はRackアプリとして純粋に保つ
     - [ ] (任意) opt-inで `Lazuli::App#start_deno_process` を実装するか（rackup単体起動でもDenoをspawnできるようにする）
     - [ ] spawnする場合: socket ready のヘルスチェック/リトライ、終了時クリーンアップ、ログ制御
-- [ ] **ルーティング/params の改善**
-    - [ ] `/users/123` の `123` を `params[:id]` に渡す（path params）
-    - [ ] ルート解決の責務整理（`Resource`名/`action`解決、405/404の切り分け）
-- [ ] **Resource RPC メタデータの整備**
-    - [ ] `Resource.rpc` で定義を保持（name/returns/params など）
-    - [ ] `lazuli types` に RPC 型（request/response）やクライアントスタブ生成を追加するか検討
+
 - [x] **Turbo Drive の統合**
     - [x] Turbo Drive をJSで自動注入（esm.sh）
     - [ ] **Turbo Frames/Streams の統合（hooks最小方針）**
