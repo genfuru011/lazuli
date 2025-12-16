@@ -34,7 +34,7 @@ module Lazuli
       fmt == "turbo_stream" || fmt == "turbo-stream"
     end
 
-    def turbo_stream
+    def turbo_stream(error_target: "flash", error_targets: nil)
       stream = Lazuli::TurboStream.new
       yield stream
 
@@ -46,7 +46,13 @@ module Lazuli
         status = 500 if status < 400 || status > 599
 
         msg = escape_html(e.message)
-        body = %(<turbo-stream action="update" target="flash"><template><pre>#{msg}</pre></template></turbo-stream>)
+        selector_attr = if error_targets
+          %(targets="#{escape_html(error_targets)}")
+        else
+          %(target="#{escape_html(error_target)}")
+        end
+
+        body = %(<turbo-stream action="update" #{selector_attr}><template><pre>#{msg}</pre></template></turbo-stream>)
         return [status, { "content-type" => "text/vnd.turbo-stream.html; charset=utf-8", "vary" => "accept" }, [body]]
       end
     end
