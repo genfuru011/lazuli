@@ -10,6 +10,20 @@ class UsersResource < Lazuli::Resource
     if turbo_stream?
       return turbo_stream do |t|
         t.append "users_list", fragment: "components/UserRow", props: { user: user }
+        t.update "flash", fragment: "components/FlashMessage", props: { message: "Added #{user.name}" }
+      end
+    end
+
+    redirect_to "/users"
+  end
+
+  def destroy
+    user = UserRepository.delete(params[:id])
+
+    if turbo_stream?
+      return turbo_stream do |t|
+        t.remove "user_#{params[:id]}"
+        t.replace "flash", fragment: "components/FlashBox", props: { message: "Deleted #{user&.name || params[:id]}" }
       end
     end
 

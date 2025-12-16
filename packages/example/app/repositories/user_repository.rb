@@ -15,4 +15,10 @@ module UserRepository
     @users << user
     user
   end
+
+  def self.delete(id)
+    idx = @users.index { |u| u.id.to_i == id.to_i }
+    return nil unless idx
+    @users.delete_at(idx)
+  end
 end

@@ -12,6 +12,8 @@ export default function UsersIndex(props: { users: User[] }) {
     <div>
       <h1>Users List</h1>
 
+      <div id="flash" style={{ marginBottom: "12px" }}></div>
+
       <form method="post" action="/users" style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
         <input name="name" placeholder="Name" />
         <button type="submit">Add</button>
@@ -19,7 +21,7 @@ export default function UsersIndex(props: { users: User[] }) {
 
       <ul id="users_list">
         {props.users.map((user) => (
-          <UserRow user={user} />
+          <UserRow user={user} key={user.id} />
         ))}
       </ul>
 
