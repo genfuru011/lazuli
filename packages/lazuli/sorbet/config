@@ -1,5 +1,13 @@
---dir=lib
---dir=sorbet/rbi
---ignore=vendor
+# Sorbet LSP requires a single input directory.
+--dir=.
+
+--ignore=assets
+--ignore=bin
+--ignore=test
 --ignore=tmp
+--ignore=vendor
+
 --typed=false
+
+# Sorbet LSP will fail without Watchman in some environments.
+--disable-watchman

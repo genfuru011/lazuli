@@ -1,6 +1,16 @@
 # Root sorbet config for editor tooling when opening the monorepo root.
---dir=packages/lazuli/lib
---dir=packages/lazuli/sorbet/rbi
+# Sorbet LSP requires a single input directory.
+--dir=packages/lazuli
+
+--ignore=packages/example
+--ignore=packages/lazuli/assets
+--ignore=packages/lazuli/bin
+--ignore=packages/lazuli/test
+--ignore=packages/lazuli/tmp
+
 --ignore=vendor
 --ignore=tmp
 --typed=false
+
+# Sorbet LSP will fail without Watchman in some environments.
+--disable-watchman
