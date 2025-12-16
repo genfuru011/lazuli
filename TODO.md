@@ -25,8 +25,9 @@
     - [x] 終了時にDeno/Rackを停止しソケットをクリーンアップ（基本）
     - [ ] プロセスグループ/子プロセス含む完全停止
     - [ ] ログ簡素化・リトライ制御
-- [ ] **Turbo Drive の統合**
-    - [ ] ページ遷移の高速化 (SPAライクな挙動)
+- [x] **Turbo Drive の統合**
+    - [x] Turbo Drive をJSで自動注入（esm.sh）
+    - [ ] Turbo Frames/Streams の統合（必要なら）
 
 ## 優先度: 中 (Enhancements)
 

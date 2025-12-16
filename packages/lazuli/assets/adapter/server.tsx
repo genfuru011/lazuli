@@ -140,14 +140,15 @@ app.post("/render", async (c) => {
     const importMapScript = `<script type="importmap">${JSON.stringify(importMap)}</script>`;
     const currentToken = await loadReloadToken(appRoot);
     const reloadScript = reloadEnabled ? `<script type="module">(function(){const initial="${currentToken}";const es=new EventSource("/__lazuli/events");es.onmessage=(ev)=>{const token=String(ev.data||"");if(token&&token!==initial){location.reload();}};es.onerror=()=>{/* rely on EventSource auto-reconnect */};})();</script>` : "";
+    const turboScript = `<script type="module">import "https://esm.sh/@hotwired/turbo@8";</script>`;
     let injectedHtml = doc;
 
     if (doc.includes("</head>")) {
-      injectedHtml = doc.replace("</head>", `${importMapScript}${reloadScript}</head>`);
+      injectedHtml = doc.replace("</head>", `${importMapScript}${turboScript}${reloadScript}</head>`);
     } else if (doc.includes("<head>")) {
-      injectedHtml = doc.replace("<head>", `<head>${importMapScript}${reloadScript}`);
+      injectedHtml = doc.replace("<head>", `<head>${importMapScript}${turboScript}${reloadScript}`);
     } else {
-      injectedHtml = `${importMapScript}${reloadScript}${doc}`;
+      injectedHtml = `${importMapScript}${turboScript}${reloadScript}${doc}`;
     }
 
     return c.html(injectedHtml);
