@@ -1,0 +1,5 @@
+--dir=lib
+--dir=sorbet/rbi
+--ignore=vendor
+--ignore=tmp
+--typed=false

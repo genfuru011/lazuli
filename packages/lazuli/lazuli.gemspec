@@ -21,4 +21,9 @@ Gem::Specification.new do |spec|
   # Core dependencies will be added here
   # spec.add_dependency "sqlite3"
   spec.add_dependency "rack"
+
+  # Development tooling
+  spec.add_development_dependency "ruby-lsp"
+  spec.add_development_dependency "sorbet"
+  spec.add_development_dependency "tapioca"
 end
