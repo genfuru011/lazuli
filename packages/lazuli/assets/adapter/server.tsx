@@ -35,7 +35,7 @@ async function loadUserImports(appRoot: string) {
   }
 }
 
-const app = new Hono();
+export const app = new Hono();
 const reloadEnabled = Deno.env.get("LAZULI_RELOAD_ENABLED") === "1";
 const reloadToken = Deno.env.get("LAZULI_RELOAD_TOKEN") ?? crypto.randomUUID?.() ?? `${Date.now()}`;
 
@@ -296,31 +296,35 @@ app.get("/assets/*", async (c) => {
   }
 });
 
+export default app;
+
 // Start the server
-if (args.socket) {
-  // Unix Domain Socket
-  try {
-    await ensureDir(dirname(args.socket));
-    await Deno.remove(args.socket);
-  } catch (e) {
-    if (!(e instanceof Deno.errors.NotFound)) {
-      console.error(e);
+if (import.meta.main) {
+  if (args.socket) {
+    // Unix Domain Socket
+    try {
+      await ensureDir(dirname(args.socket));
+      await Deno.remove(args.socket);
+    } catch (e) {
+      if (!(e instanceof Deno.errors.NotFound)) {
+        console.error(e);
+      }
     }
+    Deno.serve({
+      path: args.socket,
+      handler: app.fetch,
+      onListen: ({ path }) => {
+        console.log(`Lazuli Adapter listening on unix socket: ${path}`);
+      }
+    });
+  } else {
+    // TCP Fallback (for testing)
+    Deno.serve({
+      port: 3000,
+      handler: app.fetch,
+      onListen: ({ port }) => {
+        console.log(`Lazuli Adapter listening on http://localhost:${port}`);
+      }
+    });
   }
-  Deno.serve({
-    path: args.socket,
-    handler: app.fetch,
-    onListen: ({ path }) => {
-      console.log(`Lazuli Adapter listening on unix socket: ${path}`);
-    }
-  });
-} else {
-  // TCP Fallback (for testing)
-  Deno.serve({
-    port: 3000,
-    handler: app.fetch,
-    onListen: ({ port }) => {
-      console.log(`Lazuli Adapter listening on http://localhost:${port}`);
-    }
-  });
 }
