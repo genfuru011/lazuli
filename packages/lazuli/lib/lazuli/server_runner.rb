@@ -1,5 +1,7 @@
 require "fileutils"
 
+require_relative "type_generator"
+
 module Lazuli
   class ServerRunner
     DEFAULT_PORT = 9292
@@ -28,6 +30,8 @@ module Lazuli
     def start_processes
       stop_process(:deno)
       stop_process(:rack)
+
+      generate_types
 
       token = Time.now.to_f.to_s
       ENV["LAZULI_RELOAD_TOKEN"] = token if @reload
@@ -124,6 +128,13 @@ module Lazuli
       ensure
         @pids[key] = nil
       end
+    end
+
+    def generate_types
+      out_path = File.join(@app_root, "client.d.ts")
+      Lazuli::TypeGenerator.generate(app_root: @app_root, out_path: out_path)
+    rescue StandardError => e
+      warn "[Lazuli] Type generation failed: #{e.message}"
     end
 
     def adapter_path

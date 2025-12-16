@@ -9,9 +9,9 @@
 - [x] **ホットリロード (Hot Reload) の実装**
     - [x] Ruby/TSXファイルの変更検知とサーバー再起動（簡易ウォッチャ）
     - [x] TSXファイルの変更検知とブラウザリロード (Live Reload) ※ポーリングによる簡易版
-- [ ] **TypeScript型定義の自動生成**
+- [x] **TypeScript型定義の自動生成**
     - [x] `Lazuli::Struct` から `client.d.ts` を生成する機能（`lazuli types`）
-    - [ ] Struct変更検知→自動生成（watch/サーバー起動時に追従）
+    - [x] Struct変更検知→自動生成（`lazuli server --reload` の再起動時に追従）
 - [ ] **Live Reload の高度化**
     - [ ] EventSource/long-poll でのpush通知実装（現在はポーリング）
     - [ ] ブラウザ側の自動再接続とエラーハンドリング
