@@ -1,4 +1,5 @@
 require "test_helper"
+require "lazuli"
 require "lazuli/resource"
 require "lazuli/renderer"
 require "lazuli/turbo_stream"
@@ -134,6 +135,24 @@ class TurboStreamResourceTest < Minitest::Test
         t.append "list", fragment: "../secrets", props: {}
       end
     end
+  end
+
+  def test_stream_renderer_error_preserves_status
+    original = Lazuli::Renderer.method(:render_turbo_stream)
+    Lazuli::Renderer.define_singleton_method(:render_turbo_stream) do |_ops|
+      raise ::Lazuli::Error, "Turbo Stream render failed (400): Bad fragment"
+    end
+
+    req = RequestStub.new("text/vnd.turbo-stream.html")
+    status, headers, body = Lazuli::Resource.new({}, request: req).turbo_stream do |t|
+      t.append "list", fragment: "components/Row", props: { id: 1 }
+    end
+
+    assert_equal 400, status
+    assert_equal "text/vnd.turbo-stream.html; charset=utf-8", headers["content-type"]
+    assert_includes body.join, "turbo-stream"
+  ensure
+    Lazuli::Renderer.define_singleton_method(:render_turbo_stream, &original)
   end
 
   def test_redirect_to_defaults_to_303_without_request

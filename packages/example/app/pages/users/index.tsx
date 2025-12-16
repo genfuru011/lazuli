@@ -15,10 +15,14 @@ export default function UsersIndex(props: { users: User[] }) {
       <div id="flash" style={{ marginBottom: "12px" }}></div>
       <div id="notice"></div>
 
-      <form method="post" action="/users" style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-        <input name="name" placeholder="Name" />
-        <button type="submit">Add</button>
-      </form>
+      <div style={{ display: "flex", gap: "12px", alignItems: "center", marginBottom: "12px" }}>
+        <form method="post" action="/users" style={{ display: "flex", gap: "8px" }}>
+          <input name="name" placeholder="Name" />
+          <button type="submit">Add</button>
+        </form>
+
+        <a href="/users" data-turbo-method="delete">Delete all (targets demo)</a>
+      </div>
 
       <ul id="users_list">
         {props.users.map((user) => (

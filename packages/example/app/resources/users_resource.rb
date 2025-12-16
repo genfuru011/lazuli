@@ -26,19 +26,36 @@ class UsersResource < Lazuli::Resource
   end
 
   def destroy
-    user = UserRepository.delete(params[:id])
+    if params[:id]
+      user = UserRepository.delete(params[:id])
+
+      if turbo_stream?
+        return turbo_stream do |t|
+          t.remove "user_#{params[:id]}"
+
+          t.remove "notice"
+          t.before "users_list", fragment: "components/Notice", props: { message: "Deleted #{user&.name || params[:id]}" }
+
+          t.remove "users_footer"
+          t.after "users_list", fragment: "components/UsersFooter", props: { count: UserRepository.all.length }
+
+          t.replace "flash", fragment: "components/FlashBox", props: { message: "Deleted #{user&.name || params[:id]}" }
+        end
+      end
+
+      return redirect_to "/users"
+    end
+
+    # DELETE /users -> batch delete demo (targets)
+    UserRepository.clear
 
     if turbo_stream?
       return turbo_stream do |t|
-        t.remove "user_#{params[:id]}"
-
+        t.remove targets: "#users_list li"
         t.remove "notice"
-        t.before "users_list", fragment: "components/Notice", props: { message: "Deleted #{user&.name || params[:id]}" }
-
         t.remove "users_footer"
-        t.after "users_list", fragment: "components/UsersFooter", props: { count: UserRepository.all.length }
-
-        t.replace "flash", fragment: "components/FlashBox", props: { message: "Deleted #{user&.name || params[:id]}" }
+        t.after "users_list", fragment: "components/UsersFooter", props: { count: 0 }
+        t.update "flash", fragment: "components/FlashMessage", props: { message: "Deleted all users via targets" }
       end
     end
 

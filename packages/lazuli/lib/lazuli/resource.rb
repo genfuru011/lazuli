@@ -42,9 +42,12 @@ module Lazuli
         body = Lazuli::Renderer.render_turbo_stream(normalize_value(stream.operations))
         return [200, { "content-type" => "text/vnd.turbo-stream.html; charset=utf-8", "vary" => "accept" }, [body]]
       rescue StandardError => e
+        status = (e.message.to_s[/\((\d{3})\)/, 1] || "500").to_i
+        status = 500 if status < 400 || status > 599
+
         msg = escape_html(e.message)
         body = %(<turbo-stream action="update" target="flash"><template><pre>#{msg}</pre></template></turbo-stream>)
-        return [500, { "content-type" => "text/vnd.turbo-stream.html; charset=utf-8", "vary" => "accept" }, [body]]
+        return [status, { "content-type" => "text/vnd.turbo-stream.html; charset=utf-8", "vary" => "accept" }, [body]]
       end
     end
 

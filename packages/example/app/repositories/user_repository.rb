@@ -21,4 +21,8 @@ module UserRepository
     return nil unless idx
     @users.delete_at(idx)
   end
+
+  def self.clear
+    @users = []
+  end
 end
