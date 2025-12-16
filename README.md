@@ -55,6 +55,27 @@ You need to run both the Deno adapter and the Ruby server.
 3.  **Access the application:**
     Open `http://localhost:9292` in your browser.
 
+## Lazuli CLI (開発用)
+
+`cd packages/example` などアプリルートで以下を実行:
+
+- サーバー起動（Ruby + Deno同時起動・簡易ホットリロード付き）  
+  ```bash
+  lazuli server --reload
+  ```
+- リソース雛形生成  
+  ```bash
+  lazuli generate resource users
+  ```
+- プロジェクト作成  
+  ```bash
+  lazuli new my_app
+  ```
+- StructからTypeScript型生成  
+  ```bash
+  lazuli types
+  ```
+
 ## Commit Strategy
 
 We follow **Conventional Commits** to maintain a clean and readable history.
