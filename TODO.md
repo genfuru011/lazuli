@@ -9,18 +9,21 @@
 - [x] **ホットリロード (Hot Reload) の実装**
     - [x] Ruby/TSXファイルの変更検知とサーバー再起動（簡易ウォッチャ）
     - [x] TSXファイルの変更検知とブラウザリロード (Live Reload) ※ポーリングによる簡易版
-- [x] **TypeScript型定義の自動生成**
-    - [x] `Lazuli::Struct` から `client.d.ts` を生成する機能
+- [ ] **TypeScript型定義の自動生成**
+    - [x] `Lazuli::Struct` から `client.d.ts` を生成する機能（`lazuli types`）
+    - [ ] Struct変更検知→自動生成（watch/サーバー起動時に追従）
 - [ ] **Live Reload の高度化**
-    - [ ] EventSource/long-poll でのpush通知実装
+    - [ ] EventSource/long-poll でのpush通知実装（現在はポーリング）
     - [ ] ブラウザ側の自動再接続とエラーハンドリング
 - [ ] **TypeGenerator の精緻化**
     - [x] Array/Optional/Struct参照の型推論強化
     - [ ] Union型（非配列含む）の正確化
-    - [x] 型重複・名前衝突ガードとテスト追加
+    - [x] 型の重複出力回避とテスト追加
+    - [ ] 名前衝突ガード（例: `Admin::User` と `User`）
 - [ ] **ServerRunner 改善**
     - [x] ウォッチ対象に config/deno.json を含める
-    - [x] 終了時の子プロセス完全クリーンアップ
+    - [x] 終了時にDeno/Rackを停止しソケットをクリーンアップ（基本）
+    - [ ] プロセスグループ/子プロセス含む完全停止
     - [ ] ログ簡素化・リトライ制御
 - [ ] **Turbo Drive の統合**
     - [ ] ページ遷移の高速化 (SPAライクな挙動)
