@@ -13,6 +13,7 @@ export default function UsersIndex(props: { users: User[] }) {
       <h1>Users List</h1>
 
       <div id="flash" style={{ marginBottom: "12px" }}></div>
+      <div id="notice"></div>
 
       <form method="post" action="/users" style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
         <input name="name" placeholder="Name" />
@@ -24,6 +25,8 @@ export default function UsersIndex(props: { users: User[] }) {
           <UserRow user={user} key={user.id} />
         ))}
       </ul>
+
+      <div id="users_footer"></div>
 
       <div style={{ "margin-top": "20px", border: "1px solid #ccc", padding: "10px" }}>
         <h3>Interactive Counter (Island)</h3>

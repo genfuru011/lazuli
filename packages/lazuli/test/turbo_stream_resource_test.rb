@@ -25,7 +25,9 @@ class TurboStreamResourceTest < Minitest::Test
     def create
       if turbo_stream?
         turbo_stream do |t|
-          t.append "list", fragment: "components/Row", props: { id: 1 }
+          t.prepend "list", fragment: "components/Row", props: { id: 1 }
+          t.before "list", fragment: "components/Row", props: { id: 2 }
+          t.after "list", fragment: "components/Row", props: { id: 3 }
           t.update "flash", fragment: "components/Flash", props: { message: "hi" }
           t.replace "flash", fragment: "components/Flash", props: { message: "bye" }
           t.remove "row_1"
@@ -52,11 +54,13 @@ class TurboStreamResourceTest < Minitest::Test
     assert_includes body.join, "turbo-stream"
 
     assert_kind_of Array, captured
-    assert_equal 4, captured.length
-    assert_equal :append, captured[0][:action]
-    assert_equal :update, captured[1][:action]
-    assert_equal :replace, captured[2][:action]
-    assert_equal :remove, captured[3][:action]
+    assert_equal 6, captured.length
+    assert_equal :prepend, captured[0][:action]
+    assert_equal :before, captured[1][:action]
+    assert_equal :after, captured[2][:action]
+    assert_equal :update, captured[3][:action]
+    assert_equal :replace, captured[4][:action]
+    assert_equal :remove, captured[5][:action]
   ensure
     Lazuli::Renderer.define_singleton_method(:render_turbo_stream, &original)
   end
