@@ -38,7 +38,14 @@ module Lazuli
       [200, { "content-type" => "text/vnd.turbo-stream.html", "vary" => "accept" }, [body]]
     end
 
-    def redirect_to(location, status: 303)
+    def redirect_to(location, status: nil)
+      status ||= begin
+        method = request&.request_method.to_s
+        method == "GET" ? 302 : 303
+      rescue StandardError
+        303
+      end
+
       [status, { "location" => location, "content-type" => "text/plain" }, ["Redirecting to #{location}"]]
     end
 
