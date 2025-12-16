@@ -56,7 +56,10 @@ module Lazuli
         resource = resource_class.new(merged_params, request: req)
 
         unless resource.respond_to?(action)
-          return [405, { "content-type" => "text/plain" }, ["Action not allowed: #{resource_name}##{action}"]]
+          allow = allowed_methods(resource, segments)
+          headers = { "content-type" => "text/plain" }
+          headers["allow"] = allow.join(", ") unless allow.empty?
+          return [405, headers, ["Action not allowed: #{resource_name}##{action}"]]
         end
 
         result = resource.public_send(action)
@@ -89,6 +92,18 @@ module Lazuli
       else
         "index"
       end
+    end
+
+    def allowed_methods(resource, segments)
+      id_present = segments.length > 1 && !segments[1].to_s.empty?
+
+      allow = []
+      allow << "GET" if resource.respond_to?(id_present ? "show" : "index")
+      allow << "POST" if resource.respond_to?("create")
+      allow << "PUT" if resource.respond_to?("update")
+      allow << "PATCH" if resource.respond_to?("update")
+      allow << "DELETE" if resource.respond_to?("destroy")
+      allow
     end
 
     def normalize_headers(headers)

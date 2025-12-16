@@ -22,7 +22,8 @@ class RoutingParamsTest < Minitest::Test
   end
 
   def test_missing_action_returns_405
-    status, _headers, _body = @app.call(Rack::MockRequest.env_for("/users/123", method: "PUT"))
+    status, headers, _body = @app.call(Rack::MockRequest.env_for("/users/123", method: "PUT"))
     assert_equal 405, status
+    assert_equal "GET", headers["allow"]
   end
 end
