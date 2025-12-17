@@ -97,11 +97,25 @@ module Lazuli
           return [status, { "content-type" => "text/vnd.turbo-stream.html; charset=utf-8", "vary" => "accept" }, [body]]
         end
 
+        return [status, { "content-type" => "text/html; charset=utf-8" }, [dev_error_page(e, status: status)]] if debug
+
         msg = escape_html(msg)
         body = "<!DOCTYPE html><html><head><meta charset=\"utf-8\" /></head><body><pre>#{msg}</pre></body></html>"
         [status, { "content-type" => "text/html; charset=utf-8" }, [body]]
       rescue StandardError => e
-        [500, { "content-type" => "text/plain" }, ["Internal Server Error: #{e.message}"]]
+        debug = ENV["LAZULI_DEBUG"] == "1"
+
+        if accepts_turbo_stream?(req)
+          target = ENV["LAZULI_TURBO_ERROR_TARGET"].to_s
+          target = "flash" if target.empty?
+          msg = escape_html(debug ? "#{e.class}: #{e.message}" : "Internal Server Error")
+          body = %(<turbo-stream action="update" target="#{escape_html(target)}"><template><pre>#{msg}</pre></template></turbo-stream>)
+          return [500, { "content-type" => "text/vnd.turbo-stream.html; charset=utf-8", "vary" => "accept" }, [body]]
+        end
+
+        return [500, { "content-type" => "text/html; charset=utf-8" }, [dev_error_page(e, status: 500)]] if debug
+
+        [500, { "content-type" => "text/plain" }, ["Internal Server Error"]]
       end
     end
 
@@ -162,6 +176,36 @@ module Lazuli
 
         q > 0
       end
+    end
+
+    def dev_error_page(error, status:)
+      title = escape_html("#{status} #{error.class}")
+      message = escape_html(error.message)
+      backtrace = escape_html(Array(error.backtrace).join("\n"))
+
+      <<~HTML
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <title>#{title}</title>
+            <style>
+              body { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; margin: 16px; }
+              h1 { font-size: 16px; margin: 0 0 12px; }
+              pre { background: #111827; color: #e5e7eb; padding: 12px; overflow: auto; border-radius: 8px; }
+              .label { font-weight: 600; margin: 16px 0 8px; }
+            </style>
+          </head>
+          <body>
+            <h1>#{title}</h1>
+            <div class="label">Message</div>
+            <pre>#{message}</pre>
+            <div class="label">Backtrace</div>
+            <pre>#{backtrace}</pre>
+          </body>
+        </html>
+      HTML
     end
 
     def content_type_for(path)

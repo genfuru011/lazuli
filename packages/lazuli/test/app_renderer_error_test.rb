@@ -10,6 +10,12 @@ class HomeResource < Lazuli::Resource
   end
 end
 
+class ExplodeResource < Lazuli::Resource
+  def index
+    raise "boom"
+  end
+end
+
 class AppRendererErrorTest < Minitest::Test
 
   def setup
@@ -63,6 +69,39 @@ class AppRendererErrorTest < Minitest::Test
     assert_includes body.join, "<turbo-stream"
     assert_includes body.join, "Bad fragment"
   ensure
+    Lazuli::Renderer.define_singleton_method(:render, &original)
+  end
+
+  def test_debug_renders_detailed_error_page_for_standard_error
+    old = ENV["LAZULI_DEBUG"]
+    ENV["LAZULI_DEBUG"] = "1"
+
+    status, headers, body = @app.call(Rack::MockRequest.env_for("/explode"))
+    assert_equal 500, status
+    assert_equal "text/html; charset=utf-8", headers["content-type"]
+    assert_includes body.join, "Backtrace"
+    assert_includes body.join, "RuntimeError"
+    assert_includes body.join, "boom"
+  ensure
+    ENV["LAZULI_DEBUG"] = old
+  end
+
+  def test_debug_renders_detailed_error_page_for_renderer_error
+    original = Lazuli::Renderer.method(:render)
+    Lazuli::Renderer.define_singleton_method(:render) do |_page, _props|
+      raise Lazuli::RendererError.new(status: 400, body: "Bad fragment", message: "Bad fragment")
+    end
+
+    old = ENV["LAZULI_DEBUG"]
+    ENV["LAZULI_DEBUG"] = "1"
+
+    status, headers, body = @app.call(Rack::MockRequest.env_for("/"))
+    assert_equal 400, status
+    assert_equal "text/html; charset=utf-8", headers["content-type"]
+    assert_includes body.join, "Bad fragment"
+    assert_includes body.join, "Backtrace"
+  ensure
+    ENV["LAZULI_DEBUG"] = old
     Lazuli::Renderer.define_singleton_method(:render, &original)
   end
 end
