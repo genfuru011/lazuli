@@ -5,3 +5,12 @@ export interface User {
   id: number;
   name: string;
 }
+
+// RPC request/response types (from Resource.rpc)
+export interface RpcRequests {
+  "UsersResource#rpc_index": undefined;
+}
+
+export interface RpcResponses {
+  "UsersResource#rpc_index": User[];
+}

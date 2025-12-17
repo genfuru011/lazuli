@@ -33,3 +33,28 @@ Fragments live under your app root, e.g. `app/components/UserRow.tsx` and are re
 
 `targets:` is supported for selector-based updates/removals.
 
+## RPC (experimental)
+
+Define an allowlisted JSON RPC method on a Resource:
+
+```rb
+class UsersResource < Lazuli::Resource
+  rpc :rpc_index, returns: [User]
+
+  def rpc_index
+    UserRepository.all
+  end
+end
+```
+
+Run `lazuli types` to generate:
+- `client.d.ts` (includes `RpcRequests`/`RpcResponses`)
+- `client.rpc.ts` and `app/client.rpc.ts` (typed `fetch` helper)
+
+In an Island/hydrated component:
+
+```ts
+import { rpc } from "/assets/client.rpc.ts";
+const users = await rpc("UsersResource#rpc_index", undefined);
+```
+

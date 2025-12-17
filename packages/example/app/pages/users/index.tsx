@@ -1,4 +1,5 @@
 import Counter from "../../components/Counter.tsx";
+import RpcUsers from "../../components/RpcUsers.tsx";
 import Island from "lazuli/island";
 import UserRow from "../../components/UserRow.tsx";
 
@@ -34,11 +35,12 @@ export default function UsersIndex(props: { users: User[] }) {
 
       <div style={{ "margin-top": "20px", border: "1px solid #ccc", padding: "10px" }}>
         <h3>Interactive Counter (Island)</h3>
-        <Island 
-          path="components/Counter" 
-          component={Counter} 
-          data={{ initialCount: 10 }} 
-        />
+        <Island path="components/Counter" component={Counter} data={{ initialCount: 10 }} />
+      </div>
+
+      <div style={{ "margin-top": "20px", border: "1px solid #ccc", padding: "10px" }}>
+        <h3>RPC demo (Island)</h3>
+        <Island path="components/RpcUsers" component={RpcUsers} data={{}} />
       </div>
     </div>
   );

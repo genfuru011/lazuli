@@ -34,6 +34,11 @@ class TypeGeneratorRpcTest < Minitest::Test
       assert File.exist?(client_path)
       client = File.read(client_path)
       assert_includes client, "/__lazuli/rpc"
+
+      app_client_path = File.join(app_root, "app", "client.rpc.ts")
+      assert File.exist?(app_client_path)
+      app_client = File.read(app_client_path)
+      assert_includes app_client, "/__lazuli/rpc"
     end
   end
 end
