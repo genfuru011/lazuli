@@ -36,4 +36,18 @@ class CliGenerateResourceTest < Minitest::Test
       end
     end
   end
+
+  def test_generate_resource_supports_route_override
+    Dir.mktmpdir do |dir|
+      app_root = File.join(dir, "app_root")
+      %w[components layouts pages repositories resources structs tmp/sockets].each do |path|
+        FileUtils.mkdir_p(File.join(app_root, "app", path))
+      end
+
+      Lazuli::CLI.run(["generate", "resource", "book", app_root, "--route", "/library/books"])
+
+      resource = File.read(File.join(app_root, "app", "resources", "book_resource.rb"))
+      assert_includes resource, "stream_or(redirect_to(\"/library/books\"))"
+    end
+  end
 end

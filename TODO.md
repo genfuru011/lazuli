@@ -118,8 +118,8 @@
 - [x] **データベース連携の強化**
     - [x] マイグレーション機能の統合（`lazuli db create` / `rollback` + `Lazuli::DB`）
     - [x] `Lazuli::Repository` のベースクラス実装（`default_db_path` / `open`）
-- [ ] **CLI UX拡張**
-    - [ ] `generate resource`でslug/route指定とテンプレートコメント挿入
+- [x] **CLI UX拡張**
+    - [x] `generate resource`でroute指定（`--route`）+ テンプレート注釈を追加
 - [x] **ドキュメント整備**
     - [x] `packages/lazuli/README.md` を実用レベルに拡充（server/types/islands/turbo など）
     - [x] `packages/lazuli/docs/ARCHITECTURE.md` のディレクトリマッピング（views→pages/layouts/components等）を現状に合わせる

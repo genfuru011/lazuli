@@ -181,12 +181,20 @@ module Lazuli
       when "resource"
         name = argv.shift
         if name.nil? || name.strip.empty?
-          abort "Usage: lazuli generate resource <name> [app_root]"
+          abort "Usage: lazuli generate resource <name> [app_root] [--route PATH]"
         end
+
         app_root = File.expand_path(argv.shift || Dir.pwd)
-        generate_resource(app_root, name)
+        options = { route: nil }
+
+        OptionParser.new do |o|
+          o.banner = "Usage: lazuli generate resource <name> [app_root] [--route PATH]"
+          o.on("--route PATH", "Base route for redirects (default: /#{underscore(name)}s)") { |v| options[:route] = v }
+        end.parse!(argv)
+
+        generate_resource(app_root, name, route: options[:route])
       else
-        abort "Usage: lazuli generate resource <name> [app_root]"
+        abort "Usage: lazuli generate resource <name> [app_root] [--route PATH]"
       end
     end
 
@@ -250,11 +258,13 @@ module Lazuli
       puts "Rolled back #{options[:steps]} migration(s)"
     end
 
-    def generate_resource(app_root, name)
+    def generate_resource(app_root, name, route: nil)
       classified = classify(name)
       resource_class = "#{classified}Resource"
       struct_class = classified
       repo_module = "#{classified}Repository"
+      route ||= "/#{underscore(name)}s"
+      route = "/#{route}" unless route.start_with?("/")
 
       write_file(File.join(app_root, "app", "structs", "#{underscore(name)}.rb"), <<~RUBY)
         class #{struct_class} < Lazuli::Struct
@@ -304,7 +314,8 @@ module Lazuli
           def create
             item = #{repo_module}.create(params[:#{underscore(name)}] || {})
 
-            stream_or(redirect_to("/#{underscore(name)}s")) do |t|
+            # Ruby returns operations; Deno renders the <template> fragment.
+            stream_or(redirect_to("#{route}")) do |t|
               t.prepend :#{underscore(name)}s_list, "components/#{classified}Row", #{underscore(name)}: item
               t.update :flash, "components/FlashMessage", message: "Created"
             end
@@ -318,7 +329,7 @@ module Lazuli
           def destroy
             item = #{repo_module}.delete(params[:id])
 
-            stream_or(redirect_to("/#{underscore(name)}s")) do |t|
+            stream_or(redirect_to("#{route}")) do |t|
               t.remove "#{underscore(name)}_\#{params[:id]}"
               t.update :flash, "components/FlashMessage", message: "Deleted"
             end
