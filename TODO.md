@@ -136,6 +136,7 @@
     - [ ] Ruby側のRSpec統合
     - [ ] Deno側のテスト統合
 - [ ] **ベンチマーク**
+    - [x] example にローカルベンチスクリプト追加（`packages/example/bin/bench`）
     - [ ] Rails, Hanami との比較
 
 ## 完了済み (Done)

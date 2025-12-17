@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+PORT="${PORT:-9294}"
+SOCKET_DIR="$ROOT/tmp/sockets"
+SOCKET="$SOCKET_DIR/lazuli-renderer-bench.sock"
+
+mkdir -p "$SOCKET_DIR"
+rm -f "$SOCKET"
+
+cleanup() {
+  set +e
+  if [[ -n "${RUNNER_PID:-}" ]]; then kill -TERM "$RUNNER_PID" 2>/dev/null || true; fi
+  wait "${RUNNER_PID:-}" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+bundle check >/dev/null 2>&1 || bundle install --quiet
+
+# Many environments install Deno into ~/.deno/bin but don't add it to PATH.
+if [[ -x "$HOME/.deno/bin/deno" ]]; then
+  export PATH="$HOME/.deno/bin:$PATH"
+fi
+
+if ! command -v deno >/dev/null 2>&1; then
+  echo "ERROR: deno not found (install Deno to run this benchmark)" >&2
+  exit 1
+fi
+
+bundle exec lazuli db create >/dev/null
+
+LOG_DIR="$ROOT/tmp/log"
+mkdir -p "$LOG_DIR"
+DEV_LOG="$LOG_DIR/dev-bench.log"
+
+# Start Lazuli dev runner (Rack + Deno)
+(
+  exec env LAZULI_QUIET=1 bundle exec lazuli dev \
+    --app-root "$ROOT" \
+    --port "$PORT" \
+    --socket "$SOCKET"
+) >"$DEV_LOG" 2>&1 &
+RUNNER_PID=$!
+
+# Wait until Rack is ready
+ready=0
+for _ in $(seq 1 300); do
+  if curl -fsS "http://127.0.0.1:$PORT/" >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
+  sleep 0.1
+done
+
+if [[ "$ready" != "1" ]]; then
+  echo "ERROR: lazuli dev did not start on :$PORT" >&2
+  echo "--- dev log (tail) ---" >&2
+  tail -n 200 "$DEV_LOG" >&2 || true
+  exit 1
+fi
+
+ruby "$ROOT/bench/http_bench.rb" "http://127.0.0.1:$PORT"  

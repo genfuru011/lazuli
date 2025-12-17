@@ -33,6 +33,18 @@ cd packages/example
 ./bin/e2e
 ```
 
+## Benchmark (local)
+
+Runs a simple built-in HTTP benchmark (no external tools) against the example app.
+
+```bash
+cd packages/example
+./bin/bench
+
+# knobs
+DURATION=10 CONCURRENCY=20 PORT=9294 ./bin/bench
+```
+
 ## What to verify
 
 ### Turbo Drive
