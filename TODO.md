@@ -47,7 +47,7 @@
     - [x] `/render` の最小SSRテスト
     - [x] CIで `deno test` を回す（setup-deno）
 
-- [ ] **ServerRunner 改善**
+- [x] **ServerRunner 改善**
     - [x] ウォッチ対象に config/deno.json を含める
     - [x] 終了時にDeno/Rackを停止しソケットをクリーンアップ（基本）
     - [x] プロセスグループ/子プロセス含む完全停止（pgid kill + at_exit cleanup）
@@ -59,8 +59,8 @@
 
 - [x] **Turbo Drive の統合**
     - [x] Turbo Drive をJSで自動注入（esm.sh）
-    - [ ] **Turbo Frames/Streams の統合（hooks最小方針）**
-        - [ ] Turbo Frames: フレームワーク側は特別な仕組みを増やさず、ユーザーが `<turbo-frame id="...">` を書けば動く前提を明文化
+    - [x] **Turbo Frames/Streams の統合（hooks最小方針）**
+        - [x] Turbo Frames: フレームワーク側は特別な仕組みを増やさず、ユーザーが `<turbo-frame id="...">` を書けば動く前提を明文化
         - [x] Turbo Streams: Ruby側に最小APIを追加（Content-Type: `text/vnd.turbo-stream.html`）
             - [x] `Lazuli::TurboStream` ビルダー（`append/prepend/replace/update/remove/before/after` 等）
             - [x] `Lazuli::Resource#turbo_stream` で複数操作をまとめて返す
@@ -77,10 +77,10 @@
     - [x] monorepo rootにGemfile/sorbet configを配置（VSCodeで動作）
     - [x] Rack向けの最小RBI shim追加
 
-- [ ] **CI/テスト実行の整備**
+- [x] **CI/テスト実行の整備**
     - [x] GitHub Actions: `packages/lazuli` の `bundle install` がGemNotFoundで落ちる問題を解消（working-directory / lockfile / cache）
-    - [ ] `packages/lazuli` のテストが `minitest` に依存しているので、開発依存に追加して `bundle exec ruby -Itest test/**/*_test.rb` を通す
-    - [ ] (任意) CI で Ruby + Deno のテスト実行
+    - [x] `packages/lazuli` のテストが `minitest` に依存しているので、開発依存に追加して `bundle exec ruby -Itest test/**/*_test.rb` を通す
+    - [x] CI で Ruby + Deno のテスト実行
 
 - [ ] **Islands Architecture の自動化**
     - [ ] `"use hydration"` ディレクティブの自動検出

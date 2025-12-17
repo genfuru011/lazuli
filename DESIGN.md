@@ -255,6 +255,12 @@ JSバンドルサイズを極小化し、ビルドステップを排除するた
 SPAのような「ぬるぬる動く」ページ遷移は、**Turbo Drive** によって実現する。
 Ruby/Denoは通常のHTMLを返すが、Turboが `<body>` を差分更新するため、ブラウザのリロードは発生しない。これにカスタムコードは一切不要である。
 
+#### Turbo Frames（hooks最小）
+
+Turbo Frames は、フレームワーク側の特別な仕組みを増やさずに使える。
+ユーザーがHTML側で `<turbo-frame id="...">` を書くだけで、Turboが対象フレームの置換を行う。
+Lazuliは「Rubyは操作やデータ、DenoはHTMLレンダリング」という責務分離を維持し、Frames専用APIは基本的に提供しない（必要なら将来的に frame request 判定などを追加）。
+
 ### 6-2. Interactivity: Islands Architecture with Hono JSX
 
 動的なUI（カウンタ、モーダル等）が必要な場合のみ、Hono JSX をクライアントサイドで起動（Hydrate）する。
