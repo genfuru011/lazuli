@@ -88,7 +88,7 @@
         - [x] `?format=turbo_stream` でも turbo-stream 扱いにできる
         - [x] 非turbo時のfallback（redirect等）を短く書ける `stream_or(...) { ... }` / `stream_ops_or(...) { ... }` を推奨例に反映
         - [x] `lazuli generate resource` が `stream_or(redirect_to(...)) { ... }` パターンを出力する
-    - [ ] **DSLを短くする**
+    - [x] **DSLを短くする**
         - [x] `turbo_stream { |s| ... }` を `stream { ... }` など短いエイリアスで提供（hooks最小のまま）
         - [x] `fragment:` 必須は維持しつつ、`target:` の頻出ケースを省略しやすいAPIにする（例: `append("items", "items/item", id: 1)` / `append("items", fragment: "items/item", props: {...})`）
     - [x] エラー表示の重複排除
