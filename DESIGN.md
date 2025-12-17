@@ -177,8 +177,8 @@ class UsersResource < Lazuli::Resource
     # - <template> の中身HTMLは Deno が JSX fragment を SSR して生成
     # - Turboは `Accept: text/vnd.turbo-stream.html` を付ける（+ `?format=turbo_stream` も可）
     # - actionが `Lazuli::TurboStream` を返したら、Appが自動で turbo-stream レスポンスに変換する
-    stream_ops_or(redirect_to("/users")) do |t|
-      t.prepend "users_list", fragment: "components/UserRow", props: { user: user }
+    stream_or(redirect_to("/users")) do |t|
+      t.prepend "users_list", "components/UserRow", user: user
     end
   end
 end

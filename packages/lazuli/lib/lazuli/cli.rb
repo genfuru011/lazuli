@@ -238,9 +238,12 @@ module Lazuli
           end
 
           def create
-            # params example: params[:#{underscore(name)}]
-            # #{repo_module}.create(params[:#{underscore(name)}])
-            Render "#{underscore(name)}", #{underscore(name)}: []
+            item = #{repo_module}.create(params[:#{underscore(name)}] || {})
+
+            stream_or(redirect_to("/#{underscore(name)}s")) do |t|
+              t.prepend "#{underscore(name)}s_list", "components/#{classified}Row", #{underscore(name)}: item
+              t.update "flash", "components/FlashMessage", message: "Created"
+            end
           end
 
           def update
@@ -249,8 +252,12 @@ module Lazuli
           end
 
           def destroy
-            # #{repo_module}.delete(params[:id])
-            Render "#{underscore(name)}", #{underscore(name)}: []
+            item = #{repo_module}.delete(params[:id])
+
+            stream_or(redirect_to("/#{underscore(name)}s")) do |t|
+              t.remove "#{underscore(name)}_\#{params[:id]}"
+              t.update "flash", "components/FlashMessage", message: "Deleted"
+            end
           end
         end
       RUBY
