@@ -2,6 +2,11 @@
 
 Ruby for routing/thinking + Deno(Hono JSX) for rendering.
 
+## Reference
+
+- Reference guide (CLI / routing / file layout / Turbo Streams / Islands / DB): `docs/REFERENCE.md`
+- Architecture (process model / IPC): `docs/ARCHITECTURE.md`
+
 ## Process model
 
 - `lazuli dev`: starts **Rack + Deno** via `Lazuli::ServerRunner` (use `--reload` for development)
