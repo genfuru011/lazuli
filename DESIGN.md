@@ -18,6 +18,19 @@ Lazuliは、Rubyの「記述性の高さ」と、モダンWeb標準（Deno/Hono�
       * 基本はMPA（Multi-Page Application）。ページ遷移は高速。
       * JavaScriptは必要な箇所（Islands）にのみ「ふりかける」。ビルドステップは存在しない（Zero Node Modules）。
 
+### このフレームワークの「構文の良さ」とは？
+
+- **Rubyは「決定」と「操作」だけを書く**: DBアクセス、分岐、リダイレクト、Turbo Stream operations など「何をしたいか」だけを Ruby に置く。
+- **HTML文字列はDenoに委譲**: Rubyはテンプレート生成に関与せず、Deno(Hono JSX)が SSR でHTML（通常ページ/fragment）を生成する。
+- **返り値がそのままHTTPの意図になる**: `Render(...)` / `redirect_to(...)` / `stream{...}` のように、コントロールフローがRubyの通常の構文で読める。
+- **フック最小・拡張は外側**: アプリ固有の「魔法」を増やさず、Rack/Turbo の標準的な動作の上に薄く載せる。
+
+### DSLを使わない理由
+
+- **メタプログラミング由来の“暗黙”を避ける**: `method_missing`/`class_eval`中心のDSLは追跡が難しく、境界が曖昧になりやすい。
+- **型/IDE/テストに強い**: 通常のRubyメソッド・オブジェクトで構成すると Sorbet/静的解析/grep が効きやすく、破壊的変更にも耐える。
+- **責務境界を守りやすい**: RubyがHTMLを生成し始めると二重責務になりがちなので、「Ruby=operation、Deno=template」というルールを構文レベルで守れる形にする。
+
 -----
 
 ## 2\. System Architecture
