@@ -3,25 +3,17 @@ PATH
   specs:
     lazuli (0.1.0)
       rack
+      sqlite3
 
 GEM
   remote: https://rubygems.org/
   specs:
-    language_server-protocol (3.17.0.5)
-    logger (1.7.0)
     nio4r (2.7.5)
-    prism (1.6.0)
     puma (7.1.0)
       nio4r (~> 2.0)
     rack (3.2.4)
     rackup (2.3.1)
       rack (>= 3)
-    rbs (3.9.5)
-      logger
-    ruby-lsp (0.26.4)
-      language_server-protocol (~> 3.17.0)
-      prism (>= 1.2, < 2.0)
-      rbs (>= 3, < 5)
     sqlite3 (2.8.1-arm64-darwin)
     sqlite3 (2.8.1-x86_64-linux-gnu)
 
@@ -33,7 +25,6 @@ DEPENDENCIES
   lazuli!
   puma
   rackup
-  ruby-lsp
   sqlite3
 
 BUNDLED WITH

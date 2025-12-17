@@ -29,9 +29,11 @@ The project adopts a monorepo structure:
 ### Installation
 
 ```bash
-# Install Ruby dependencies
 cd packages/example
 bundle install
+
+# Create + migrate SQLite DB (db/development.sqlite3)
+lazuli db create
 ```
 
 ### Running the Application (Development)
@@ -42,6 +44,8 @@ lazuli dev --reload
 ```
 
 Open `http://localhost:9292` in your browser.
+
+See `packages/example/README.md` for the full e2e checklist (Turbo Drive / Streams / Islands hydration / DB migrate).
 
 ## Lazuli CLI (開発用)
 

@@ -2,6 +2,7 @@ require "optparse"
 require "fileutils"
 require "timeout"
 
+require_relative "db"
 require_relative "server_runner"
 require_relative "type_generator"
 
