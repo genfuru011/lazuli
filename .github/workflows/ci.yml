@@ -14,13 +14,14 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: ruby/setup-ruby@v1
+        env:
+          BUNDLE_GEMFILE: packages/lazuli/Gemfile
         with:
           ruby-version: "3.4"
           bundler-cache: true
-          working-directory: packages/lazuli
 
       - name: Ruby tests
-        run: bundle exec ruby -Ilib -Itest test/**/*_test.rb
+        run: bundle exec ruby -Ilib -Itest -e 'Dir.glob("test/**/*_test.rb").sort.each { |f| require "./#{f}" }'
 
   deno:
     runs-on: ubuntu-latest
