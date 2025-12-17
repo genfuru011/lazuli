@@ -13,10 +13,8 @@ rm -f "$SOCKET"
 
 cleanup() {
   set +e
-  if [[ -n "${RACK_PID:-}" ]]; then kill -TERM "$RACK_PID" 2>/dev/null || true; fi
-  if [[ -n "${DENO_PID:-}" ]]; then kill -TERM "$DENO_PID" 2>/dev/null || true; fi
-  wait "${RACK_PID:-}" 2>/dev/null || true
-  wait "${DENO_PID:-}" 2>/dev/null || true
+  if [[ -n "${RUNNER_PID:-}" ]]; then kill -TERM "$RUNNER_PID" 2>/dev/null || true; fi
+  wait "${RUNNER_PID:-}" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -31,26 +29,16 @@ bundle exec lazuli db create >/dev/null
 
 LOG_DIR="$ROOT/tmp/log"
 mkdir -p "$LOG_DIR"
-DENO_LOG="$LOG_DIR/deno-e2e.log"
-RACK_LOG="$LOG_DIR/rack-e2e.log"
+DEV_LOG="$LOG_DIR/dev-e2e.log"
 
-# Start Deno renderer (unix socket)
+# Start Lazuli dev runner (Rack + Deno)
 (
-  exec deno run -A --unstable-net \
-    --config "$ROOT/deno.json" \
-    "$(bundle exec ruby -e 'print Gem.loaded_specs["lazuli"].full_gem_path')/assets/adapter/server.tsx" \
+  exec bundle exec lazuli dev \
     --app-root "$ROOT" \
+    --port "$PORT" \
     --socket "$SOCKET"
-) >"$DENO_LOG" 2>&1 &
-DENO_PID=$!
-
-# Start Rack app (HTTP)
-(
-  export LAZULI_APP_ROOT="$ROOT"
-  export LAZULI_SOCKET="$SOCKET"
-  exec bundle exec rackup -o 127.0.0.1 -p "$PORT"
-) >"$RACK_LOG" 2>&1 &
-RACK_PID=$!
+) >"$DEV_LOG" 2>&1 &
+RUNNER_PID=$!
 
 # Wait until Rack is ready
 ready=0
@@ -63,11 +51,9 @@ for _ in $(seq 1 300); do
 done
 
 if [[ "$ready" != "1" ]]; then
-  echo "ERROR: Rack did not start on :$PORT" >&2
-  echo "--- rack log (tail) ---" >&2
-  tail -n 200 "$RACK_LOG" >&2 || true
-  echo "--- deno log (tail) ---" >&2
-  tail -n 200 "$DENO_LOG" >&2 || true
+  echo "ERROR: lazuli dev did not start on :$PORT" >&2
+  echo "--- dev log (tail) ---" >&2
+  tail -n 200 "$DEV_LOG" >&2 || true
   exit 1
 fi
 
