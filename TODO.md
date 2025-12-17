@@ -51,7 +51,7 @@
     - [x] ウォッチ対象に config/deno.json を含める
     - [x] 終了時にDeno/Rackを停止しソケットをクリーンアップ（基本）
     - [x] プロセスグループ/子プロセス含む完全停止（pgid kill + at_exit cleanup）
-    - [ ] ログ簡素化・リトライ制御
+    - [x] ログ簡素化・リトライ制御（LAZULI_QUIET/LAZULI_DEBUG、socket-ready待ち + retry）
 - [ ] **プロセスモデルの整理（App/ServerRunner）**
     - [x] 方針: Deno管理は `Lazuli::ServerRunner`（CLI）に集約し、`Lazuli::App` はRackアプリとして純粋に保つ
     - [ ] (任意) opt-inで `Lazuli::App#start_deno_process` を実装するか（rackup単体起動でもDenoをspawnできるようにする）

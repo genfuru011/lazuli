@@ -1,5 +1,6 @@
 require "fileutils"
 require "timeout"
+require "socket"
 
 require_relative "type_generator"
 
@@ -14,6 +15,9 @@ module Lazuli
       @port = port || DEFAULT_PORT
       @reload = reload
       @pids = {}
+      @quiet = ENV["LAZULI_QUIET"] == "1"
+      @start_retries = (ENV["LAZULI_START_RETRIES"] || "2").to_i
+      @start_timeout = (ENV["LAZULI_START_TIMEOUT"] || "5").to_f
     end
 
     def start
@@ -56,7 +60,7 @@ module Lazuli
         "bundle", "exec", "rackup", "-p", @port.to_s
       ]
 
-      puts "[Lazuli] Starting Deno adapter..."
+      log "[Lazuli] Starting Deno adapter..."
       deno_env = {
         "LAZULI_APP_ROOT" => @app_root,
         "LAZULI_SOCKET" => @socket_path,
@@ -64,25 +68,29 @@ module Lazuli
         "LAZULI_RELOAD_ENABLED" => @reload ? "1" : nil,
         "LAZULI_RELOAD_TOKEN_PATH" => @reload_token_path
       }.compact
-      @pids[:deno] = Process.spawn(deno_env, *deno_cmd, chdir: @app_root, out: $stdout, err: $stderr, pgroup: true)
-      puts "[Lazuli] Deno PID: #{@pids[:deno]}"
+      @pids[:deno] = spawn_with_retry(:deno) do
+        Process.spawn(deno_env, *deno_cmd, chdir: @app_root, out: $stdout, err: $stderr, pgroup: true)
+      end
+      debug "[Lazuli] Deno PID: #{@pids[:deno]}"
 
-      puts "[Lazuli] Starting Rack server on port #{@port}..."
-      @pids[:rack] = Process.spawn(
-        {
-          "LAZULI_APP_ROOT" => @app_root,
-          "LAZULI_SOCKET" => @socket_path,
-          "LAZULI_RELOAD_TOKEN" => token,
-          "LAZULI_RELOAD_ENABLED" => @reload ? "1" : nil,
-          "LAZULI_RELOAD_TOKEN_PATH" => @reload_token_path
-        },
-        *rack_cmd,
-        chdir: @app_root,
-        out: $stdout,
-        err: $stderr,
-        pgroup: true
-      )
-      puts "[Lazuli] Rack PID: #{@pids[:rack]}"
+      log "[Lazuli] Starting Rack server on port #{@port}..."
+      @pids[:rack] = spawn_with_retry(:rack) do
+        Process.spawn(
+          {
+            "LAZULI_APP_ROOT" => @app_root,
+            "LAZULI_SOCKET" => @socket_path,
+            "LAZULI_RELOAD_TOKEN" => token,
+            "LAZULI_RELOAD_ENABLED" => @reload ? "1" : nil,
+            "LAZULI_RELOAD_TOKEN_PATH" => @reload_token_path
+          },
+          *rack_cmd,
+          chdir: @app_root,
+          out: $stdout,
+          err: $stderr,
+          pgroup: true
+        )
+      end
+      debug "[Lazuli] Rack PID: #{@pids[:rack]}"
     end
 
     def start_watcher
@@ -93,7 +101,7 @@ module Lazuli
           current = checksum
           next if current == previous
           previous = current
-          puts "[Lazuli] Change detected. Reloading (no restart)..."
+          log "[Lazuli] Change detected. Reloading..."
           generate_types
           bump_reload_token
         end
@@ -112,7 +120,7 @@ module Lazuli
     def trap_signals
       %w[INT TERM].each do |sig|
         Signal.trap(sig) do
-          puts "[Lazuli] Shutting down..."
+          log "[Lazuli] Shutting down..."
           stop_all
           exit
         end
@@ -137,6 +145,11 @@ module Lazuli
       pid = @pids[key]
       return unless pid
 
+      stop_pid(pid)
+      @pids[key] = nil
+    end
+
+    def stop_pid(pid)
       pgid = begin
         Process.getpgid(pid)
       rescue StandardError
@@ -144,7 +157,6 @@ module Lazuli
       end
 
       begin
-        # Kill the whole process group (deno/rack may spawn child processes).
         Process.kill("TERM", -pgid)
       rescue Errno::ESRCH
       end
@@ -162,16 +174,54 @@ module Lazuli
         end
       rescue Errno::ECHILD
       ensure
-        # Best-effort: if the leader exited but children are still alive in the group, terminate them too.
         begin
           Process.kill(0, -pgid)
           Process.kill("KILL", -pgid)
         rescue Errno::ESRCH
         rescue Errno::EPERM
         end
-
-        @pids[key] = nil
       end
+    end
+
+    def spawn_with_retry(key)
+      attempts = 0
+      pid = nil
+
+      begin
+        attempts += 1
+        pid = yield
+        wait_for_renderer_socket if key == :deno
+        pid
+      rescue StandardError => e
+        warn "[Lazuli] #{key} failed to start: #{e.message}"
+        stop_pid(pid) if pid
+        retry if attempts <= @start_retries
+        raise
+      end
+    end
+
+    def wait_for_renderer_socket
+      deadline = Time.now + @start_timeout
+
+      loop do
+        begin
+          sock = UNIXSocket.new(@socket_path)
+          sock.close
+          return
+        rescue Errno::ENOENT, Errno::ECONNREFUSED
+        end
+
+        raise "Renderer socket not ready" if Time.now >= deadline
+        sleep 0.05
+      end
+    end
+
+    def log(msg)
+      puts msg unless @quiet
+    end
+
+    def debug(msg)
+      puts msg if ENV["LAZULI_DEBUG"] == "1"
     end
 
     def generate_types
