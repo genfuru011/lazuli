@@ -79,7 +79,18 @@ module Lazuli
         [200, { "content-type" => "text/html" }, [result.to_s]]
       rescue NameError
         [404, { "content-type" => "text/plain" }, ["Resource not found: #{resource_name}"]]
-      rescue => e
+      rescue Lazuli::RendererError => e
+        status = e.status.to_i
+        debug = ENV["LAZULI_DEBUG"] == "1"
+        msg = if status >= 500 && !debug
+          "Internal Server Error"
+        else
+          e.body.to_s.empty? ? e.message : e.body.to_s
+        end
+        msg = escape_html(msg)
+        body = "<!DOCTYPE html><html><head><meta charset=\"utf-8\" /></head><body><pre>#{msg}</pre></body></html>"
+        [status, { "content-type" => "text/html; charset=utf-8" }, [body]]
+      rescue StandardError => e
         [500, { "content-type" => "text/plain" }, ["Internal Server Error: #{e.message}"]]
       end
     end
@@ -118,6 +129,10 @@ module Lazuli
       (headers || {}).transform_keys do |key|
         key.to_s.downcase
       end
+    end
+
+    def escape_html(s)
+      s.to_s.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;").gsub('"', "&quot;")
     end
 
     def content_type_for(path)
