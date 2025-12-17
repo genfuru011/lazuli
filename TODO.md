@@ -2,7 +2,7 @@
 
 ## 直近（2025-12-17）
 
-- [ ] **Turbo Streams: Ruby API をさらに短く（体験改善・最優先）**
+- [x] **Turbo Streams: Ruby API をさらに短く（体験改善・最優先）**
   - [x] `target:`/`targets:` の省略記法を最終整理（id/selector判定 + Symbol/Array対応）
   - [x] 最短パターン（`stream { ... }` / `stream_or(...) { ... }`）を example / generator に固定
   - [x] 受け入れ基準（READMEの最小例）がそのままコピペで動くことを確認
@@ -79,7 +79,7 @@
 
 ## 優先度: 中 (Enhancements)
 
-- [ ] **Turbo Streams: Ruby API の簡素化（Resource側のコード量を減らす）**
+- [x] **Turbo Streams: Ruby API の簡素化（Resource側のコード量を減らす）**
     - [x] `Lazuli::Resource#turbo_stream` の責務を整理
         - [x] `Resource#turbo_stream` は operations (`Lazuli::TurboStream`) を返すだけに寄せる
         - [x] Rackレスポンス生成（status/headers/body）+ escape_html + エラーハンドリングは `Lazuli::App` 側に集約
@@ -90,12 +90,12 @@
         - [x] `lazuli generate resource` が `stream_or(redirect_to(...)) { ... }` パターンを出力する
     - [ ] **DSLを短くする**
         - [x] `turbo_stream { |s| ... }` を `stream { ... }` など短いエイリアスで提供（hooks最小のまま）
-        - [ ] `fragment:` 必須は維持しつつ、`target:` の頻出ケースを省略しやすいAPIにする（例: `append("items", fragment: "items/item", props: {...})`）
+        - [x] `fragment:` 必須は維持しつつ、`target:` の頻出ケースを省略しやすいAPIにする（例: `append("items", "items/item", id: 1)` / `append("items", fragment: "items/item", props: {...})`）
     - [x] エラー表示の重複排除
         - [x] turbo-stream エラー表示は `App` に統一（debug/非debug、target/targets は `TurboStream#error_target(s)` を優先）
-    - [ ] 受け入れ基準（最小の書き味）
-        - [ ] ユーザーコード例: `def create; stream { |s| s.prepend "items", fragment: "items/item", props: {...} }; end` だけで動く
-        - [ ] `Accept: text/vnd.turbo-stream.html` のとき自動でstream、そうでないときは通常HTML/redirectのまま
+    - [x] 受け入れ基準（最小の書き味）
+        - [x] ユーザーコード例: `def create; stream { |s| s.prepend "items", "items/item", id: 1 }; end` だけで動く
+        - [x] `Accept: text/vnd.turbo-stream.html` のとき自動でstream、そうでないときは通常HTML/redirectのまま
 
 - [x] **Sorbet/Ruby LSP の開発環境整備**
     - [x] monorepo rootにGemfile/sorbet configを配置（VSCodeで動作）
@@ -107,17 +107,17 @@
     - [x] CI で Ruby + Deno のテスト実行
 
 - [ ] **Islands Architecture の自動化**
-    - [ ] `"use hydration"` ディレクティブの自動検出
-    - [ ] Hydration用スクリプトの自動注入（現状: ユーザーが `<Island ...>` を書く必要がある）
+    - [ ] `"use hydration"` ディレクティブの自動検出（将来: auto Island化の足がかり）
+    - [x] Islandマーカー（`data-lazuli-island`）検出 → hydration runtime を自動注入（1ページ1回）
 - [x] **エラーハンドリングの強化**
     - [x] `Lazuli::RendererError` に status を保持（レンダリング失敗時にHTTP statusで扱える）
     - [x] Deno adapterのエラーレスポンスを統一（status付き + debug時のみstack、500は通常ISE）
     - [x] Deno側でのレンダリングエラーをRuby側で適切にキャッチして表示（HTMLエラーページ、500は通常サニタイズ）
     - [x] (任意) turbo-stream時は flash 等に update する共通ハンドラ（Accept turbo-stream 時の RendererError を turbo-stream で返す）
     - [x] 開発モードでの詳細なエラー画面（LAZULI_DEBUG=1でHTMLにmessage/backtraceを表示）
-- [ ] **データベース連携の強化**
-    - [ ] マイグレーション機能の統合
-    - [ ] `Lazuli::Repository` のベースクラス実装
+- [x] **データベース連携の強化**
+    - [x] マイグレーション機能の統合（`lazuli db create` / `rollback` + `Lazuli::DB`）
+    - [x] `Lazuli::Repository` のベースクラス実装（`default_db_path` / `open`）
 - [ ] **CLI UX拡張**
     - [ ] `generate resource`でslug/route指定とテンプレートコメント挿入
 - [x] **ドキュメント整備**
