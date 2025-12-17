@@ -61,17 +61,15 @@
     - [x] Turbo Drive をJSで自動注入（esm.sh）
     - [ ] **Turbo Frames/Streams の統合（hooks最小方針）**
         - [ ] Turbo Frames: フレームワーク側は特別な仕組みを増やさず、ユーザーが `<turbo-frame id="...">` を書けば動く前提を明文化
-        - [ ] Turbo Streams: Ruby側に最小APIを追加（Content-Type: `text/vnd.turbo-stream.html`）
-            - [ ] `Lazuli::TurboStream` ビルダー（`append/prepend/replace/update/remove/before/after` 等）
-            - [ ] `Lazuli::Resource#turbo_stream`（または `render_turbo_stream`）で複数操作をまとめて返せるようにする
-            - [ ] Content negotiation: `Accept: text/vnd.turbo-stream.html`（+ `?format=turbo_stream` の逃げ道）
-            - [ ] Turboが期待するリダイレクト/ステータス（302/303）と互換になるように整理
-        - [ ] `<template>` 内HTMLの生成戦略を決める
-            - [ ] 推奨案: Deno側に fragment render 用エンドポイント（例: `POST /render_fragment`）を追加してJSXで断片SSR
-            - [ ] 代替案: Rubyで文字列生成（最小）※HTML escape/安全性の取り扱い要注意
-            - [ ] どちらをデフォルトにするか決定・ドキュメント化
-        - [ ] exampleアプリでStreams実例（create/deleteでlistにappend/remove、Framesと併用）
-        - [ ] テスト: RackレベルでContent-Typeとturbo-streamタグ構造の検証
+        - [x] Turbo Streams: Ruby側に最小APIを追加（Content-Type: `text/vnd.turbo-stream.html`）
+            - [x] `Lazuli::TurboStream` ビルダー（`append/prepend/replace/update/remove/before/after` 等）
+            - [x] `Lazuli::Resource#turbo_stream` で複数操作をまとめて返す
+            - [x] Content negotiation: `Accept: text/vnd.turbo-stream.html`（+ `?format=turbo_stream`）
+            - [x] Turboが期待するリダイレクト/ステータス（302/303）と互換になるよう整理
+            - [x] Turbo Streamエラー表示の整備（500は通常サニタイズ、debug時のみ詳細）
+        - [x] `<template>` 内HTMLは Deno JSX fragment で生成（Rubyはoperationのみ）
+        - [x] exampleアプリでStreams実例（create/deleteでprepend/replace/remove等）
+        - [x] テスト: Content-Type/operations/Acceptなど検証
 
 ## 優先度: 中 (Enhancements)
 
@@ -79,9 +77,10 @@
     - [x] monorepo rootにGemfile/sorbet configを配置（VSCodeで動作）
     - [x] Rack向けの最小RBI shim追加
 
-- [ ] **テスト実行の整備**
+- [ ] **CI/テスト実行の整備**
+    - [x] GitHub Actions: `packages/lazuli` の `bundle install` がGemNotFoundで落ちる問題を解消（working-directory / lockfile / cache）
     - [ ] `packages/lazuli` のテストが `minitest` に依存しているので、開発依存に追加して `bundle exec ruby -Itest test/**/*_test.rb` を通す
-    - [ ] (任意) CI でテスト実行
+    - [ ] (任意) CI で Ruby + Deno のテスト実行
 
 - [ ] **Islands Architecture の自動化**
     - [ ] `"use hydration"` ディレクティブの自動検出

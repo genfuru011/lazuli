@@ -5,30 +5,31 @@ on:
   pull_request:
 
 jobs:
-  test:
+  ruby:
     runs-on: ubuntu-latest
-    env:
-      BUNDLE_GEMFILE: ${{ github.workspace }}/packages/lazuli/Gemfile
+    defaults:
+      run:
+        working-directory: packages/lazuli
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.4'
+          ruby-version: "3.4"
           bundler-cache: true
+          working-directory: packages/lazuli
 
-      - name: Set up Deno
-        uses: denoland/setup-deno@v2
+      - name: Ruby tests
+        run: bundle exec ruby -Ilib -Itest test/**/*_test.rb
+
+  deno:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
 
-      - name: Ruby tests
-        run: |
-          cd packages/lazuli
-          bundle exec ruby -Itest -e 'Dir["test/**/*_test.rb"].sort.each { |f| require_relative f }'
-
       - name: Deno adapter tests
-        run: |
-          cd packages/lazuli/assets/adapter
-          deno test -A --no-check --config deno.json server_test.ts
+        run: deno test -A --no-check --unstable-net --config packages/lazuli/assets/adapter/deno.json packages/lazuli/assets/adapter/server_test.ts
