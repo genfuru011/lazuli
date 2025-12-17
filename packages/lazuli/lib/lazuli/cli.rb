@@ -22,6 +22,8 @@ module Lazuli
         run_server_runner(@argv, cmd_name: "dev")
       when "server"
         run_rack_only(@argv)
+      when "db"
+        run_db(@argv)
       when "new"
         run_new(@argv)
       when "types"
@@ -96,6 +98,7 @@ module Lazuli
         FileUtils.mkdir_p(File.join(app_root, "app", dir))
       end
       FileUtils.mkdir_p(File.join(app_root, "tmp", "sockets"))
+      FileUtils.mkdir_p(File.join(app_root, "db", "migrate"))
 
       write_file(File.join(app_root, "config.ru"), <<~RACK)
         require "bundler/setup"
@@ -184,6 +187,66 @@ module Lazuli
       else
         abort "Usage: lazuli generate resource <name> [app_root]"
       end
+    end
+
+    def run_db(argv)
+      sub = argv.shift
+      case sub
+      when "create"
+        run_db_create(argv)
+      when "rollback"
+        run_db_rollback(argv)
+      else
+        abort "Usage: lazuli db <create|rollback> [options]"
+      end
+    end
+
+    def run_db_create(argv)
+      options = {
+        app_root: Dir.pwd,
+        db: nil,
+        migrations: nil
+      }
+
+      parser = OptionParser.new do |o|
+        o.banner = "Usage: lazuli db create [options]"
+        o.on("--app-root PATH", "Path to app root (default: cwd)") { |v| options[:app_root] = File.expand_path(v) }
+        o.on("--db PATH", "SQLite DB path (default: db/development.sqlite3)") { |v| options[:db] = File.expand_path(v) }
+        o.on("--migrations PATH", "Migrations dir (default: db/migrate)") { |v| options[:migrations] = File.expand_path(v) }
+      end
+      parser.parse!(argv)
+
+      app_root = File.expand_path(options[:app_root])
+      db_path = options[:db] || File.join(app_root, "db", "development.sqlite3")
+      migrations_dir = options[:migrations] || File.join(app_root, "db", "migrate")
+
+      Lazuli::DB.create(db_path: db_path, migrations_dir: migrations_dir)
+      puts "DB ready at #{db_path}"
+    end
+
+    def run_db_rollback(argv)
+      options = {
+        app_root: Dir.pwd,
+        db: nil,
+        migrations: nil,
+        steps: 1
+      }
+
+      parser = OptionParser.new do |o|
+        o.banner = "Usage: lazuli db rollback [options]"
+        o.on("--app-root PATH", "Path to app root (default: cwd)") { |v| options[:app_root] = File.expand_path(v) }
+        o.on("--db PATH", "SQLite DB path (default: db/development.sqlite3)") { |v| options[:db] = File.expand_path(v) }
+        o.on("--migrations PATH", "Migrations dir (default: db/migrate)") { |v| options[:migrations] = File.expand_path(v) }
+        o.on("--steps N", Integer, "Rollback steps (default: 1)") { |v| options[:steps] = v }
+      end
+      parser.parse!(argv)
+
+      app_root = File.expand_path(options[:app_root])
+      db_path = options[:db] || File.join(app_root, "db", "development.sqlite3")
+      migrations_dir = options[:migrations] || File.join(app_root, "db", "migrate")
+
+      Lazuli::DB.rollback(db_path: db_path, migrations_dir: migrations_dir, steps: options[:steps])
+      puts "Rolled back #{options[:steps]} migration(s)"
     end
 
     def generate_resource(app_root, name)
@@ -318,6 +381,7 @@ module Lazuli
         Commands:
           dev          Start Rack + Deno (development; use --reload for watcher)
           server       Start Rack only (expects separately-managed Deno renderer)
+          db           SQLite migrations (create/rollback)
           new NAME     Create a new Lazuli project
           generate     Generate code (resource)
           types [PATH] Generate client.d.ts from Structs (default: cwd)

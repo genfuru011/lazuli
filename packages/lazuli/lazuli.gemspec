@@ -19,7 +19,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Core dependencies will be added here
-  # spec.add_dependency "sqlite3"
+  spec.add_dependency "sqlite3"
   spec.add_dependency "rack"
 
   # Development tooling

@@ -8,9 +8,9 @@
   - [x] 受け入れ基準（READMEの最小例）がそのままコピペで動くことを確認
 - [x] **Islands: hydration 自動化（MVP）**
   - [x] Islandマーカー検出 → hydration runtime をHEADへ自動注入（1ページ1回）
-- [ ] **DB: 最小Migration + Repository base**
-  - [ ] マイグレーション実行（create/rollback）
-  - [ ] `Lazuli::Repository` ベース（接続/クエリ/型変換の最小セット）
+- [x] **DB: 最小Migration + Repository base**
+  - [x] マイグレーション実行（`lazuli db create` / `lazuli db rollback`）
+  - [x] `Lazuli::Repository` ベース（SQLite open の最小セット）
 
 ## 優先度: 高 (Core Features)
 
