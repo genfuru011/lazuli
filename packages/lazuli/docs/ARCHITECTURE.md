@@ -18,7 +18,7 @@ Lazuliは Ruby (Rack) と Deno (Renderer/Assets) の **2プロセス** で動作
 ### ライフサイクル（起動方法）
 
 *   **開発/統合起動:** `lazuli dev` が `Lazuli::ServerRunner` として Rack + Deno を同時に起動し、終了シグナルで両方を確実に停止します。
-*   **Rack単体起動:** `bundle exec rackup` / `lazuli server` は Rack のみ起動します（Deno spawn はしません）。Renderer は別プロセスで起動してください。
+*   **Rack単体起動:** `bundle exec rackup` / `lazuli server` は Rack のみ起動します（Deno spawn はしません）。Renderer は別プロセスで起動してください（例: `deno run ... "$(bundle show lazuli)/assets/adapter/server.tsx" --app-root $(pwd) --socket tmp/sockets/lazuli-renderer.sock`）。
 
 Turbo Streams の `<template>` 断片は Ruby では生成せず、Ruby は「operation を積む」だけに徹し、Deno が JSX fragment をレンダリングします。Ruby 側は `stream { ... }`（=`turbo_stream`）で操作を組み立て、`t.append "list", "components/Row", id: 1` のように `props:` を省略できます。
 
@@ -39,13 +39,13 @@ Turbo Streams の `<template>` 断片は Ruby では生成せず、Ruby は「op
 ### エンドポイント
 
 #### `POST /render`
-Hono JSXコンポーネントをHTMLにレンダリングします。
+Hono JSXで **ページ** をHTMLにレンダリングします。
 
 *   **Request (JSON):**
     ```json
     {
-      "path": "UsersIndex",   // app/views/UsersIndex.tsx へのパス
-      "props": {              // データオブジェクト (シリアライズされたLazuli::Structs)
+      "page": "users/index", // app/pages/users/index.tsx（拡張子なし）
+      "props": {
         "users": [
           { "id": 1, "name": "Alice" },
           { "id": 2, "name": "Bob" }
@@ -53,17 +53,38 @@ Hono JSXコンポーネントをHTMLにレンダリングします。
       }
     }
     ```
+
 *   **Response (HTML):**
     ```html
     <!DOCTYPE html>
     <html>
       <head>...</head>
-      <body>
-        <div id="root">...rendered html...</div>
-        <script type="module">...</script> <!-- Hydration scripts -->
-      </body>
+      <body>...rendered html...</body>
     </html>
     ```
+
+> Layout は `app/layouts/Application.tsx` が使われます。
+
+#### `POST /render_turbo_stream`
+Turbo Streams の `<template>` 内HTML（JSX fragment）をレンダリングします。
+
+*   **Request (JSON):**
+    ```json
+    {
+      "streams": [
+        {
+          "action": "append",
+          "target": "users_list",
+          "fragment": "components/UserRow",
+          "props": { "user": { "id": 1, "name": "Alice" } }
+        }
+      ]
+    }
+    ```
+
+*   **Response:** `Content-Type: text/vnd.turbo-stream.html; charset=utf-8`
+
+Fragments は `app/<fragment>.tsx` から読み込まれます（例: `app/components/UserRow.tsx`）。
 
 #### `GET /assets/*`
 静的アセットまたはオンデマンドでコンパイルされたJavaScriptを提供します。
@@ -84,7 +105,7 @@ sequenceDiagram
     Browser->>Ruby (Router): GET /users
     Ruby (Router)->>Ruby (Resource): UsersResource#index
     Ruby (Resource)->>Ruby (Resource): データ取得 (Repository)
-    Ruby (Resource)->>Deno (Renderer): POST /render (path="UsersIndex", props=...)
+    Ruby (Resource)->>Deno (Renderer): POST /render (page="users/index", props=...)
     Deno (Renderer)-->>Ruby (Resource): HTML String
     Ruby (Resource)-->>Browser: 200 OK (HTML)
 ```
@@ -102,5 +123,6 @@ Lazuliは **Island Architecture** を採用しており、ページ全体では�
 | :--- | :--- | :--- |
 | **Structs** | `app/structs/*.rb` | `app/types/*.d.ts` (推奨) |
 | **Resources** | `app/resources/*_resource.rb` | N/A |
-| **Views** | N/A | `app/views/*.tsx` |
-| **Components** | N/A | `app/views/components/*.tsx` |
+| **Pages** | N/A | `app/pages/**/*.tsx` |
+| **Layouts** | N/A | `app/layouts/*.tsx` |
+| **Components / Fragments** | N/A | `app/components/**/*.tsx` |

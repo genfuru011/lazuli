@@ -8,6 +8,15 @@ Ruby for routing/thinking + Deno(Hono JSX) for rendering.
 - `lazuli server`: starts **Rack only** (expects a separately-managed Deno renderer)
 - `bundle exec rackup`: starts **Rack only** (the Deno renderer must be started separately)
 
+### Starting the Deno renderer (rack-only mode)
+
+```sh
+deno run -A --unstable-net --config ./deno.json \
+  "$(bundle show lazuli)/assets/adapter/server.tsx" \
+  --app-root "$(pwd)" \
+  --socket "$(pwd)/tmp/sockets/lazuli-renderer.sock"
+```
+
 ## Turbo
 
 Lazuli loads Turbo (`@hotwired/turbo`) so **Turbo Drive** works out of the box.
