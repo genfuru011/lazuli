@@ -64,11 +64,17 @@ module Lazuli
         body = Lazuli::Renderer.render_turbo_stream(normalize_value(stream.operations))
         return [200, { "content-type" => "text/vnd.turbo-stream.html; charset=utf-8", "vary" => "accept" }, [body]]
       rescue Lazuli::RendererError => e
-        status = e.status
-        msg = escape_html(e.message)
+        status = e.status.to_i
+        msg = if status >= 500 && ENV["LAZULI_DEBUG"] != "1"
+          "Internal Server Error"
+        else
+          (e.body.to_s.empty? ? e.message : e.body.to_s)
+        end
+        msg = escape_html(msg)
       rescue StandardError => e
         status = 500
-        msg = escape_html(e.message)
+        msg = ENV["LAZULI_DEBUG"] == "1" ? e.message : "Internal Server Error"
+        msg = escape_html(msg)
       end
 
       selector_attr = if error_targets

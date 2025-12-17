@@ -151,6 +151,7 @@ class TurboStreamResourceTest < Minitest::Test
     assert_equal 400, status
     assert_equal "text/vnd.turbo-stream.html; charset=utf-8", headers["content-type"]
     assert_includes body.join, "target=\"flash\""
+    assert_includes body.join, "Bad fragment"
   ensure
     Lazuli::Renderer.define_singleton_method(:render_turbo_stream, &original)
   end
@@ -168,7 +169,29 @@ class TurboStreamResourceTest < Minitest::Test
 
     assert_equal 500, status
     assert_includes body.join, "targets=\"body\""
+    assert_includes body.join, "Internal Server Error"
   ensure
+    Lazuli::Renderer.define_singleton_method(:render_turbo_stream, &original)
+  end
+
+  def test_stream_error_shows_detail_in_debug
+    original = Lazuli::Renderer.method(:render_turbo_stream)
+    Lazuli::Renderer.define_singleton_method(:render_turbo_stream) do |_ops|
+      raise ::Lazuli::RendererError.new(status: 500, body: "boom", message: "boom")
+    end
+
+    old = ENV["LAZULI_DEBUG"]
+    ENV["LAZULI_DEBUG"] = "1"
+
+    req = RequestStub.new("text/vnd.turbo-stream.html")
+    status, _headers, body = Lazuli::Resource.new({}, request: req).turbo_stream(error_targets: "body") do |t|
+      t.append "list", fragment: "components/Row", props: { id: 1 }
+    end
+
+    assert_equal 500, status
+    assert_includes body.join, "boom"
+  ensure
+    ENV["LAZULI_DEBUG"] = old
     Lazuli::Renderer.define_singleton_method(:render_turbo_stream, &original)
   end
 
