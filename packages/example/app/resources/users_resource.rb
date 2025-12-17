@@ -1,7 +1,13 @@
 class UsersResource < Lazuli::Resource
+  rpc :rpc_index, returns: [User]
+
   def index
     users = UserRepository.all
     Render "users/index", users: users
+  end
+
+  def rpc_index
+    UserRepository.all
   end
 
   def create

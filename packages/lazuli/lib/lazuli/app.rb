@@ -1,4 +1,5 @@
 require "rack"
+require "json"
 
 module Lazuli
   class App
@@ -20,6 +21,11 @@ module Lazuli
       
       # Remove leading slash
       path = path[1..-1] if path.start_with?("/")
+
+      # RPC (JSON)
+      if path == "__lazuli/rpc"
+        return rpc_response(req)
+      end
 
       # Live Reload (SSE)
       if path == "__lazuli/events"
@@ -128,6 +134,55 @@ module Lazuli
         "image/jpeg"
       else
         "application/octet-stream"
+      end
+    end
+
+    def rpc_response(req)
+      payload = JSON.parse(req.body.read.to_s) rescue nil
+      return [400, { "content-type" => "text/plain" }, ["Invalid JSON"]] unless payload.is_a?(Hash)
+
+      key = payload["key"].to_s
+      params = payload["params"]
+      resource_name, action = key.split("#", 2)
+      return [400, { "content-type" => "text/plain" }, ["Invalid key"]] if resource_name.to_s.empty? || action.to_s.empty?
+
+      begin
+        resource_class = Object.const_get(resource_name)
+      rescue NameError
+        return [404, { "content-type" => "text/plain" }, ["Resource not found: #{resource_name}"]]
+      end
+
+      unless resource_class.respond_to?(:rpc_definitions) && resource_class.rpc_definitions.key?(action.to_sym)
+        return [404, { "content-type" => "text/plain" }, ["RPC not defined: #{key}"]]
+      end
+
+      rpc_params = (params.is_a?(Hash) ? params : {}).transform_keys { |k| k.to_s.to_sym }
+      resource = resource_class.new(rpc_params, request: req)
+
+      unless resource.respond_to?(action)
+        return [404, { "content-type" => "text/plain" }, ["Action not found: #{key}"]]
+      end
+
+      result = resource.public_send(action)
+      if result.is_a?(Array) && result.length == 3
+        return [500, { "content-type" => "text/plain" }, ["RPC actions must return a JSON-serializable object, not a Rack response"]]
+      end
+
+      json = JSON.generate(normalize_json_value(result))
+      [200, { "content-type" => "application/json" }, [json]]
+    rescue StandardError => e
+      [500, { "content-type" => "text/plain" }, ["RPC error: #{e.message}"]]
+    end
+
+    def normalize_json_value(value)
+      if value.is_a?(Hash)
+        value.transform_values { |v| normalize_json_value(v) }
+      elsif value.is_a?(Array)
+        value.map { |v| normalize_json_value(v) }
+      elsif value.respond_to?(:to_h)
+        normalize_json_value(value.to_h)
+      else
+        value
       end
     end
 

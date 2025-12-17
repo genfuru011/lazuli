@@ -25,8 +25,15 @@ class TypeGeneratorRpcTest < Minitest::Test
       Lazuli::TypeGenerator.generate(app_root: app_root, out_path: out_path)
 
       content = File.read(out_path)
+      assert_includes content, "export interface RpcRequests"
       assert_includes content, "export interface RpcResponses"
+      assert_includes content, '"UsersResource#index": undefined'
       assert_includes content, '"UsersResource#index": User[]'
+
+      client_path = File.join(app_root, "client.rpc.ts")
+      assert File.exist?(client_path)
+      client = File.read(client_path)
+      assert_includes client, "/__lazuli/rpc"
     end
   end
 end
