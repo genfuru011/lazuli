@@ -26,6 +26,13 @@ lazuli dev --reload
 
 Open http://localhost:9292
 
+## E2E smoke (headless)
+
+```bash
+cd packages/example
+./bin/e2e
+```
+
 ## What to verify
 
 ### Turbo Drive

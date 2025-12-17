@@ -123,9 +123,9 @@
 - [x] **ドキュメント整備**
     - [x] `packages/lazuli/README.md` を実用レベルに拡充（server/types/islands/turbo など）
     - [x] `packages/lazuli/docs/ARCHITECTURE.md` のディレクトリマッピング（views→pages/layouts/components等）を現状に合わせる
-- [ ] **サンプル拡充**
-    - [ ] exampleにCRUDフローと複数Island例を追加
-    - [ ] READMEに生成物/サンプルの利用手順を追記
+- [x] **サンプル拡充**
+    - [x] `packages/example` にCRUDフロー + 複数Island + Turbo Streams/targets デモを集約
+    - [x] `packages/example/README.md` に手順を明記（`lazuli dev` + `./bin/e2e`）
 
 ## 優先度: 低 (Future)
 

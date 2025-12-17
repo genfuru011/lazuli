@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+PORT="${PORT:-9293}"
+SOCKET_DIR="$ROOT/tmp/sockets"
+SOCKET="$SOCKET_DIR/lazuli-renderer-e2e.sock"
+
+mkdir -p "$SOCKET_DIR"
+rm -f "$SOCKET"
+
+cleanup() {
+  set +e
+  if [[ -n "${RACK_PID:-}" ]]; then kill -TERM "$RACK_PID" 2>/dev/null || true; fi
+  if [[ -n "${DENO_PID:-}" ]]; then kill -TERM "$DENO_PID" 2>/dev/null || true; fi
+  wait "${RACK_PID:-}" 2>/dev/null || true
+  wait "${DENO_PID:-}" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+bundle check >/dev/null 2>&1 || bundle install --quiet
+
+if ! command -v deno >/dev/null 2>&1; then
+  echo "ERROR: deno not found (install Deno to run this e2e smoke)" >&2
+  exit 1
+fi
+
+bundle exec lazuli db create >/dev/null
+
+LOG_DIR="$ROOT/tmp/log"
+mkdir -p "$LOG_DIR"
+DENO_LOG="$LOG_DIR/deno-e2e.log"
+RACK_LOG="$LOG_DIR/rack-e2e.log"
+
+# Start Deno renderer (unix socket)
+(
+  exec deno run -A --unstable-net \
+    --config "$ROOT/deno.json" \
+    "$(bundle exec ruby -e 'print Gem.loaded_specs["lazuli"].full_gem_path')/assets/adapter/server.tsx" \
+    --app-root "$ROOT" \
+    --socket "$SOCKET"
+) >"$DENO_LOG" 2>&1 &
+DENO_PID=$!
+
+# Start Rack app (HTTP)
+(
+  export LAZULI_APP_ROOT="$ROOT"
+  export LAZULI_SOCKET="$SOCKET"
+  exec bundle exec rackup -o 127.0.0.1 -p "$PORT"
+) >"$RACK_LOG" 2>&1 &
+RACK_PID=$!
+
+# Wait until Rack is ready
+ready=0
+for _ in $(seq 1 300); do
+  if curl -fsS "http://127.0.0.1:$PORT/" >/dev/null 2>&1; then
+    ready=1
+    break
+  fi
+  sleep 0.1
+done
+
+if [[ "$ready" != "1" ]]; then
+  echo "ERROR: Rack did not start on :$PORT" >&2
+  echo "--- rack log (tail) ---" >&2
+  tail -n 200 "$RACK_LOG" >&2 || true
+  echo "--- deno log (tail) ---" >&2
+  tail -n 200 "$DENO_LOG" >&2 || true
+  exit 1
+fi
+
+# 1) SSR + Turbo script is injected
+curl -fsS "http://127.0.0.1:$PORT/users" | grep -q "@hotwired/turbo" 
+
+# 2) Islands: data marker + hydration runtime injected
+curl -fsS "http://127.0.0.1:$PORT/users" | grep -q "data-lazuli-island"
+curl -fsS "http://127.0.0.1:$PORT/users" | grep -q "Lazuli Islands Hydration"
+
+# 3) Turbo Streams: POST returns turbo-stream content
+curl -fsS -H "Accept: text/vnd.turbo-stream.html" \
+  -X POST "http://127.0.0.1:$PORT/users" \
+  --data "name=E2E" | grep -q "<turbo-stream"
+
+# 4) DB file exists (migrate ran)
+[[ -f "$ROOT/db/development.sqlite3" ]]
+
+echo "OK: e2e smoke passed"

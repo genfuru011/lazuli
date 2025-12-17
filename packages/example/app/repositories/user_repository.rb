@@ -1,3 +1,5 @@
+require_relative "../structs/user"
+
 module UserRepository
   @users = [
     User.new(id: 1, name: "Alice"),
