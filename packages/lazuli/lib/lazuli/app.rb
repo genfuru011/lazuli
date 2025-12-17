@@ -1,6 +1,8 @@
 require "rack"
 require "json"
 
+require_relative "renderer"
+
 module Lazuli
   class App
     def initialize(root: nil, socket: nil)
@@ -138,6 +140,11 @@ module Lazuli
     end
 
     def rpc_response(req)
+      origin = req.get_header("HTTP_ORIGIN").to_s
+      if !origin.empty? && origin != req.base_url
+        return [403, { "content-type" => "text/plain" }, ["Invalid Origin"]]
+      end
+
       payload = JSON.parse(req.body.read.to_s) rescue nil
       return [400, { "content-type" => "text/plain" }, ["Invalid JSON"]] unless payload.is_a?(Hash)
 
@@ -146,14 +153,19 @@ module Lazuli
       resource_name, action = key.split("#", 2)
       return [400, { "content-type" => "text/plain" }, ["Invalid key"]] if resource_name.to_s.empty? || action.to_s.empty?
 
-      begin
-        resource_class = Object.const_get(resource_name)
-      rescue NameError
-        return [404, { "content-type" => "text/plain" }, ["Resource not found: #{resource_name}"]]
-      end
+      resource_class = resolve_rpc_resource_class(resource_name)
+      return [404, { "content-type" => "text/plain" }, ["Resource not found: #{resource_name}"]] unless resource_class
 
-      unless resource_class.respond_to?(:rpc_definitions) && resource_class.rpc_definitions.key?(action.to_sym)
-        return [404, { "content-type" => "text/plain" }, ["RPC not defined: #{key}"]]
+      defs = resource_class.respond_to?(:rpc_definitions) ? resource_class.rpc_definitions : {}
+      rpc_def = defs[action.to_sym]
+      return [404, { "content-type" => "text/plain" }, ["RPC not defined: #{key}"]] unless rpc_def
+
+      if rpc_def.key?(:params)
+        return [400, { "content-type" => "text/plain" }, ["Invalid params (expected object)"]] unless params.is_a?(Hash)
+        expected = rpc_def[:params]
+        unless validate_rpc_params(expected, params)
+          return [400, { "content-type" => "text/plain" }, ["Invalid params for #{key}"]]
+        end
       end
 
       rpc_params = (params.is_a?(Hash) ? params : {}).transform_keys { |k| k.to_s.to_sym }
@@ -172,6 +184,95 @@ module Lazuli
       [200, { "content-type" => "application/json" }, [json]]
     rescue StandardError => e
       [500, { "content-type" => "text/plain" }, ["RPC error: #{e.message}"]]
+    end
+
+    def resolve_rpc_resource_class(resource_key)
+      # Back-compat: allow old keys like "UsersResource" or "Admin::UsersResource".
+      if resource_key.include?("::") || resource_key.end_with?("Resource")
+        begin
+          return Object.const_get(resource_key)
+        rescue NameError
+        end
+      end
+
+      # New default: path-like keys ("users", "admin/users").
+      segments = resource_key.to_s.split("/")
+      return nil if segments.empty?
+
+      modules = segments[0...-1].map { |s| camelize(s) }
+      klass = "#{camelize(segments[-1])}Resource"
+      const_name = (modules + [klass]).join("::")
+
+      begin
+        return Object.const_get(const_name)
+      rescue NameError
+      end
+
+      # Last resort: scan loaded resources.
+      ObjectSpace.each_object(Class).find do |c|
+        defined?(Lazuli::Resource) && c < Lazuli::Resource && c.respond_to?(:rpc_key) && c.rpc_key == resource_key
+      end
+    end
+
+    def camelize(s)
+      s.to_s.split("_").map { |p| p.empty? ? p : p[0].upcase + p[1..] }.join
+    end
+
+    def validate_rpc_params(expected, value)
+      return true if expected.nil?
+
+      if defined?(Lazuli::Types)
+        if expected.is_a?(Lazuli::Types::Nilable)
+          return true if value.nil?
+          return validate_rpc_params(expected.type, value)
+        end
+
+        if expected.is_a?(Lazuli::Types::ArrayOf)
+          return false unless value.is_a?(Array)
+          return value.all? { |v| validate_rpc_params(expected.type, v) }
+        end
+
+        if expected.is_a?(Lazuli::Types::Union)
+          return expected.types.any? { |t| validate_rpc_params(t, value) }
+        end
+      end
+
+      # Back-compat: Array means array-of, optionally nullable.
+      if expected.is_a?(Array)
+        return true if expected.include?(NilClass) && value.nil?
+        return false unless value.is_a?(Array)
+        inner = expected.reject { |t| t == NilClass }
+        return value.all? { |v| inner.any? { |t| validate_rpc_params(t, v) } }
+      end
+
+      return value.nil? if expected == NilClass
+
+      if defined?(Lazuli::Struct) && expected.respond_to?(:<) && (expected < Lazuli::Struct)
+        return false unless value.is_a?(Hash)
+
+        expected.schema.each do |k, t|
+          v = value.key?(k.to_s) ? value[k.to_s] : value[k]
+          return false unless validate_rpc_params(t, v)
+        end
+        return true
+      end
+
+      case expected
+      when String
+        value.is_a?(String)
+      when Integer
+        value.is_a?(Integer)
+      when Float, Numeric
+        value.is_a?(Numeric)
+      when TrueClass, FalseClass
+        value == true || value == false
+      else
+        if expected.is_a?(Class)
+          value.is_a?(expected)
+        else
+          true
+        end
+      end
     end
 
     def normalize_json_value(value)

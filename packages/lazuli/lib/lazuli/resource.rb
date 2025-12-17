@@ -7,6 +7,28 @@ module Lazuli
       @request = request
     end
 
+    # Stable key used by Lazuli RPC. Default: class name -> path-like key.
+    #   UsersResource       => "users"
+    #   Admin::UsersResource => "admin/users"
+    def self.rpc_key
+      @rpc_key ||= begin
+        n = name.to_s
+        if n.empty?
+          n
+        else
+          parts = n.split("::").map do |part|
+            base = part.sub(/Resource\z/, "")
+            underscore(base)
+          end
+          parts.join("/")
+        end
+      end
+    end
+
+    def self.rpc_key=(value)
+      @rpc_key = value.to_s
+    end
+
     def self.rpc(name, options = {})
       @rpc_definitions ||= {}
       @rpc_definitions[name.to_sym] = options
@@ -105,5 +127,13 @@ module Lazuli
         value
       end
     end
+
+    def self.underscore(s)
+      s.to_s
+        .gsub(/([A-Z]+)([A-Z][a-z])/, "\\1_\\2")
+        .gsub(/([a-z\d])([A-Z])/, "\\1_\\2")
+        .downcase
+    end
+    private_class_method :underscore
   end
 end

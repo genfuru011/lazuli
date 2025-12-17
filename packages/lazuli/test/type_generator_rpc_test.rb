@@ -27,8 +27,8 @@ class TypeGeneratorRpcTest < Minitest::Test
       content = File.read(out_path)
       assert_includes content, "export interface RpcRequests"
       assert_includes content, "export interface RpcResponses"
-      assert_includes content, '"UsersResource#index": undefined'
-      assert_includes content, '"UsersResource#index": User[]'
+      assert_includes content, '"users#index": undefined'
+      assert_includes content, '"users#index": User[]'
 
       client_path = File.join(app_root, "client.rpc.ts")
       assert File.exist?(client_path)

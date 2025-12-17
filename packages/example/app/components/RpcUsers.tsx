@@ -17,7 +17,7 @@ export default function RpcUsers() {
     setLoading(true);
     setError(null);
     try {
-      const data = await rpc("UsersResource#rpc_index", undefined);
+      const data = await rpc("users#rpc_index", undefined);
       setUsers(data as unknown as User[]);
     } catch (e) {
       setError(String(e));

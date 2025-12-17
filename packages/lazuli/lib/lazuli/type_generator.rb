@@ -117,7 +117,7 @@ module Lazuli
       resources.sort_by(&:name).each do |resource|
         next unless resource.respond_to?(:rpc_definitions)
         resource.rpc_definitions.each do |name, opts|
-          key = "#{resource.name}##{name}"
+          key = "#{resource.rpc_key}##{name}"
           req = opts.key?(:params) ? map_type(opts[:params]) : "undefined"
           res = opts.key?(:returns) ? map_type(opts[:returns]) : "any"
           defs << { key: key, request: req, response: res }

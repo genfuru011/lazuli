@@ -1,5 +1,11 @@
 # Lazuli TODO List
 
+## 直近（2025-12-17）
+
+- RPC: key の安定化 / paramsスキーマ検証 / CSRF・Origin 対策
+- ServerRunner: 子プロセス含む完全停止 + ログ簡素化
+- Turbo Streams: 最小API（builder + content negotiation + redirect/status整理）
+
 ## 優先度: 高 (Core Features)
 
 - [x] **CLIツールの実装 (`lazuli` コマンド)**
@@ -30,11 +36,16 @@
     - [x] 405時にAllowヘッダを返す
 - [x] **Resource RPC メタデータの整備**
     - [x] `Resource.rpc` で定義を保持（name/returns/params など）
-    - [ ] `lazuli types` に RPC 型（request/response）やクライアントスタブ生成を追加するか検討
-+
-+- [ ] **Deno adapter テスト整備**
-+    - [x] `/render_turbo_stream` の最小Denoテスト（invalid fragment / targets remove）
-+    - [ ] CIで `deno test` を回す（実行環境にDenoを含める）
+    - [x] `lazuli types` で `RpcRequests`/`RpcResponses` と typed RPC client (`client.rpc.ts`) を生成
+    - [x] `POST /__lazuli/rpc` を追加（allowlist: `Resource.rpc` 定義済みのみ）
+    - [x] RPC key の安定化（デフォルト: path-like key `users#method`。旧 `UsersResource#method` もサーバ側で受理）
+    - [x] `rpc :name, params:` の入力スキーマ検証（最小）
+    - [x] CSRF/Origin 対策（最小: Origin一致チェック）
+
+- [x] **Deno adapter テスト整備**
+    - [x] `/render_turbo_stream` の最小Denoテスト（invalid fragment / targets remove）
+    - [x] `/render` の最小SSRテスト
+    - [x] CIで `deno test` を回す（setup-deno）
 
 - [ ] **ServerRunner 改善**
     - [x] ウォッチ対象に config/deno.json を含める

@@ -8,9 +8,9 @@ export interface User {
 
 // RPC request/response types (from Resource.rpc)
 export interface RpcRequests {
-  "UsersResource#rpc_index": undefined;
+  "users#rpc_index": undefined;
 }
 
 export interface RpcResponses {
-  "UsersResource#rpc_index": User[];
+  "users#rpc_index": User[];
 }
