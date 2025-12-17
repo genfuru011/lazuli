@@ -1,6 +1,6 @@
 require "rack"
-require "json"
 
+require_relative "json"
 require_relative "renderer"
 require_relative "resource"
 require_relative "turbo_stream"
@@ -19,6 +19,8 @@ module Lazuli
 
     def call(env)
       reload_app_code! if @reload_enabled
+
+      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
       req = Rack::Request.new(env)
       path = req.path_info
@@ -72,22 +74,39 @@ module Lazuli
           return [405, headers, ["Action not allowed: #{resource_name}##{action}"]]
         end
 
+        action_t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         result = resource.public_send(action)
+        action_ms = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - action_t0) * 1000.0
 
         if result.is_a?(Lazuli::TurboStream)
           unless accepts_turbo_stream?(req)
             return [406, { "content-type" => "text/plain" }, ["Not Acceptable"]]
           end
 
-          body = Lazuli::Renderer.render_turbo_stream(result.operations)
-          return [200, { "content-type" => "text/vnd.turbo-stream.html; charset=utf-8", "vary" => "accept" }, [body]]
+          rendered = Lazuli::Renderer.render_turbo_stream_rendered(result.operations)
+          headers = { "content-type" => "text/vnd.turbo-stream.html; charset=utf-8", "vary" => "accept" }
+          merge_server_timing!(headers, rendered.headers["server-timing"])
+          merge_server_timing!(headers, format("action;dur=%.1f", action_ms))
+          merge_server_timing!(headers, format("app;dur=%.1f", (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000.0))
+          return [200, headers, [rendered.body]]
         end
 
         if result.is_a?(Array) && result.length == 3
           return result
         end
 
-        [200, { "content-type" => "text/html" }, [result.to_s]]
+        if result.is_a?(Lazuli::Renderer::Rendered)
+          headers = { "content-type" => "text/html" }
+          merge_server_timing!(headers, result.headers["server-timing"])
+          merge_server_timing!(headers, format("action;dur=%.1f", action_ms))
+          merge_server_timing!(headers, format("app;dur=%.1f", (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000.0))
+          return [200, headers, [result.body]]
+        end
+
+        headers = { "content-type" => "text/html" }
+        merge_server_timing!(headers, format("action;dur=%.1f", action_ms))
+        merge_server_timing!(headers, format("app;dur=%.1f", (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000.0))
+        [200, headers, [result.to_s]]
       rescue NameError
         [404, { "content-type" => "text/plain" }, ["Resource not found: #{resource_name}"]]
       rescue Lazuli::RendererError => e
@@ -155,6 +174,14 @@ module Lazuli
       allow << "PATCH" if resource.respond_to?("update")
       allow << "DELETE" if resource.respond_to?("destroy")
       allow
+    end
+
+    def merge_server_timing!(headers, value)
+      return headers if value.to_s.strip.empty?
+
+      existing = headers["server-timing"].to_s
+      headers["server-timing"] = existing.empty? ? value.to_s : "#{existing}, #{value}"
+      headers
     end
 
     def normalize_headers(headers)
@@ -265,7 +292,7 @@ module Lazuli
         return [403, { "content-type" => "text/plain" }, ["Invalid Origin"]]
       end
 
-      payload = JSON.parse(req.body.read.to_s) rescue nil
+      payload = Lazuli::Json.load(req.body.read.to_s) rescue nil
       return [400, { "content-type" => "text/plain" }, ["Invalid JSON"]] unless payload.is_a?(Hash)
 
       key = payload["key"].to_s
@@ -300,7 +327,7 @@ module Lazuli
         return [500, { "content-type" => "text/plain" }, ["RPC actions must return a JSON-serializable object, not a Rack response"]]
       end
 
-      json = JSON.generate(normalize_json_value(result))
+      json = Lazuli::Json.dump(normalize_json_value(result))
       [200, { "content-type" => "application/json" }, [json]]
     rescue StandardError => e
       [500, { "content-type" => "text/plain" }, ["RPC error: #{e.message}"]]

@@ -17,6 +17,15 @@ module Lazuli
 
       db = SQLite3::Database.new(path)
       db.results_as_hash = true
+
+      # Improve concurrency under load (esp. with Falcon/async servers).
+      begin
+        db.busy_timeout = (ENV["LAZULI_DB_BUSY_TIMEOUT_MS"] || "5000").to_i
+        db.execute("PRAGMA journal_mode = WAL")
+        db.execute("PRAGMA synchronous = NORMAL")
+      rescue StandardError
+      end
+
       db
     end
   end

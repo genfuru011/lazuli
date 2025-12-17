@@ -139,6 +139,7 @@ function respondError(c: any, context: string, err: unknown) {
 
 // RPC Endpoint: Render Turbo Streams (fragments)
 app.post("/render_turbo_stream", async (c) => {
+  const t0 = performance.now();
   try {
     const { streams } = await c.req.json();
     const appRoot = resolve(args["app-root"]);
@@ -172,7 +173,11 @@ app.post("/render_turbo_stream", async (c) => {
       parts.push(`<turbo-stream action="${actionAttr}" ${selectorAttr}><template>${inner}</template></turbo-stream>`);
     }
 
-    return c.body(parts.join(""), 200, { "Content-Type": "text/vnd.turbo-stream.html; charset=utf-8" });
+    const dt = performance.now() - t0;
+    return c.body(parts.join(""), 200, {
+      "Content-Type": "text/vnd.turbo-stream.html; charset=utf-8",
+      "Server-Timing": `deno_stream;dur=${dt.toFixed(1)}`
+    });
   } catch (e) {
     console.error("Turbo Stream render error:", e);
     return respondError(c, "Turbo Stream render", e);
@@ -181,6 +186,7 @@ app.post("/render_turbo_stream", async (c) => {
 
 // RPC Endpoint: Render a page
 app.post("/render", async (c) => {
+  const t0 = performance.now();
   try {
     const { page, props } = await c.req.json();
     const appRoot = resolve(args["app-root"]);
@@ -329,7 +335,11 @@ for (const el of document.querySelectorAll("[data-lazuli-island]")) {
       injectedHtml = `${importMapScript}${turboScript}${islandsRuntimeScript}${reloadScript}${doc}`;
     }
 
-    return c.html(injectedHtml);
+    const dt = performance.now() - t0;
+    return c.body(injectedHtml, 200, {
+      "Content-Type": "text/html; charset=utf-8",
+      "Server-Timing": `deno_page;dur=${dt.toFixed(1)}`
+    });
   } catch (e) {
     console.error("Render error:", e);
     return respondError(c, "Render", e);

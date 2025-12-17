@@ -39,6 +39,8 @@ DEV_LOG="$LOG_DIR/dev-bench.log"
 # Start Lazuli dev runner (Rack + Deno)
 (
   exec env LAZULI_QUIET=1 bundle exec lazuli dev \
+    --yjit \
+    --falcon \
     --app-root "$ROOT" \
     --port "$PORT" \
     --socket "$SOCKET"

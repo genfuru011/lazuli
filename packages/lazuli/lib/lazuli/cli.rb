@@ -44,7 +44,9 @@ module Lazuli
         app_root: Dir.pwd,
         socket: nil,
         port: 9292,
-        reload: false
+        reload: false,
+        rack_server: nil,
+        yjit: false
       }
 
       parser = OptionParser.new do |o|
@@ -53,6 +55,8 @@ module Lazuli
         o.on("--socket PATH", "Unix socket path for Deno renderer") { |v| options[:socket] = File.expand_path(v) }
         o.on("--port PORT", Integer, "Rack port (default: 9292)") { |v| options[:port] = v }
         o.on("--reload", "Enable naive file watcher to restart servers on change") { options[:reload] = true }
+        o.on("--falcon", "Use Falcon for Rack server (requires falcon gem)") { options[:rack_server] = :falcon }
+        o.on("--yjit", "Enable YJIT for Ruby process") { options[:yjit] = true }
       end
       parser.parse!(argv)
 
@@ -64,7 +68,9 @@ module Lazuli
       options = {
         app_root: Dir.pwd,
         socket: nil,
-        port: 9292
+        port: 9292,
+        rack_server: nil,
+        yjit: false
       }
 
       parser = OptionParser.new do |o|
@@ -72,6 +78,8 @@ module Lazuli
         o.on("--app-root PATH", "Path to app root (default: cwd)") { |v| options[:app_root] = File.expand_path(v) }
         o.on("--socket PATH", "Unix socket path for Deno renderer") { |v| options[:socket] = File.expand_path(v) }
         o.on("--port PORT", Integer, "Rack port (default: 9292)") { |v| options[:port] = v }
+        o.on("--falcon", "Use Falcon for Rack server (requires falcon gem)") { options[:rack_server] = :falcon }
+        o.on("--yjit", "Enable YJIT for Ruby process") { options[:yjit] = true }
       end
       parser.parse!(argv)
 
@@ -82,7 +90,24 @@ module Lazuli
       ENV["LAZULI_SOCKET"] = socket_path
 
       Dir.chdir(app_root) do
-        exec "bundle", "exec", "rackup", "-p", options[:port].to_s
+        if options[:yjit]
+          ENV["RUBYOPT"] = [ENV["RUBYOPT"], "--yjit"].compact.join(" ")
+        end
+
+        if options[:rack_server] == :falcon
+          begin
+            Gem::Specification.find_by_name("falcon")
+          rescue Gem::LoadError
+            warn "[Lazuli] falcon gem not found; falling back to rackup"
+            options[:rack_server] = nil
+          end
+        end
+
+        if options[:rack_server] == :falcon
+          exec "bundle", "exec", "falcon", "serve", "--bind", "http://0.0.0.0:#{options[:port]}"
+        else
+          exec "bundle", "exec", "rackup", "-p", options[:port].to_s
+        end
       end
     end
 

@@ -148,19 +148,19 @@ Lazuli は「Ruby が routing/operation、Deno が HTML/JSX 生成」という 2
 
 1. **Falcon（Rack サーバ）**
    - Ruby 側の同時接続耐性を上げ、IPC の待ち時間を“隠せる”ようにする。
-   - 想定: prod は `lazuli server` + Falcon（Rack のみ）を推奨（Renderer は別管理）。
+   - **実装済み:** `lazuli server --falcon` / `lazuli dev --falcon` で Falcon を使って起動できます（`falcon` gem が必要。未導入なら rackup にフォールバック）。
 2. **YJIT（Ruby）**
    - CPU-bound な Ruby 側（ルーティング/JSON/ストリーム組み立て/DB の薄い層）の底上げ。
-   - 実運用は環境変数や起動オプションで opt-in にする（doc に手順を固定）。
+   - **実装済み:** `lazuli server --yjit` / `lazuli dev --yjit` で Ruby 側の YJIT を opt-in できます。
 3. **Oj（JSON）**
    - `POST /render` / `POST /render_turbo_stream` / RPC など、Ruby↔Deno 間の JSON encode/decode を高速化。
-   - 互換性のため fallback を用意しつつ、内部の JSON encoder を差し替え可能にする。
+   - **実装済み:** `Lazuli::Json` を追加し、Oj が入っていれば自動で Oj を使います（未導入なら標準 JSON にフォールバック）。
 4. **async 化（I/O 待ちを隠す）**
    - IPC 呼び出しや DB など I/O を並列化できるよう、将来の Async/Fiber 前提の設計余地を確保。
-   - 当面は「無理に全面 async にしない」方針で、Runner/Client の境界を綺麗に保つ。
+   - **実装済み（下地）:** Renderer の keep-alive socket は Fiber scheduler 有効時に **Fiber 単位**で分離されるため、将来の Fiber 並列でも安全に拡張できます。
 5. **UNIX 接続プール（Renderer socket）**
    - Renderer への接続確立（Unix socket connect）をリクエストごとに行わない。
-   - `Lazuli::Renderer::Client` で keep-alive / connection pool を導入し、p95 のブレと平均レイテンシを下げる。
+   - **実装済み:** `Lazuli::Renderer` が keep-alive socket をキャッシュして再利用します（通常は thread-local／Fiber scheduler 有効時は Fiber 単位。エラー時は破棄して再接続）。
 
 ### 受け入れ基準（例）
 

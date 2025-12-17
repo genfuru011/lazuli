@@ -41,7 +41,7 @@ module Lazuli
     # Helper to render a page
     # Usage: Render "users/index", users: users
     def Render(page, props = {})
-      Lazuli::Renderer.render(page, normalize_value(props))
+      Lazuli::Renderer.rendered(page, normalize_value(props))
     end
 
     TURBO_STREAM_MIME = "text/vnd.turbo-stream.html"

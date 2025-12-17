@@ -8,12 +8,14 @@ module Lazuli
   class ServerRunner
     DEFAULT_PORT = 9292
 
-    def initialize(app_root:, socket:, port: DEFAULT_PORT, reload: false)
+    def initialize(app_root:, socket:, port: DEFAULT_PORT, reload: false, rack_server: nil, yjit: false)
       @app_root = File.expand_path(app_root)
       @socket_path = File.expand_path(socket || File.join(@app_root, "tmp", "sockets", "lazuli-renderer.sock"))
       @reload_token_path = File.join(@app_root, "tmp", "lazuli_reload_token")
       @port = port || DEFAULT_PORT
       @reload = reload
+      @rack_server = (rack_server || ENV["LAZULI_RACK_SERVER"] || :rackup).to_sym
+      @yjit = yjit || ENV["LAZULI_YJIT"] == "1"
       @pids = {}
       @quiet = ENV["LAZULI_QUIET"] == "1"
       @start_retries = (ENV["LAZULI_START_RETRIES"] || "2").to_i
@@ -70,9 +72,21 @@ module Lazuli
         "--socket", @socket_path
       ]
 
-      rack_cmd = [
-        "bundle", "exec", "rackup", "-p", @port.to_s
-      ]
+      if @rack_server == :falcon
+        begin
+          Gem::Specification.find_by_name("falcon")
+        rescue Gem::LoadError
+          warn "[Lazuli] falcon gem not found; falling back to rackup"
+          @rack_server = :rackup
+        end
+      end
+
+      rack_cmd = case @rack_server
+      when :falcon
+        ["bundle", "exec", "falcon", "serve", "--bind", "http://0.0.0.0:#{@port}"]
+      else
+        ["bundle", "exec", "rackup", "-p", @port.to_s]
+      end
 
       log "[Lazuli] Starting Deno adapter..."
       deno_env = {
@@ -88,15 +102,22 @@ module Lazuli
       debug "[Lazuli] Deno PID: #{@pids[:deno]}"
 
       log "[Lazuli] Starting Rack server on port #{@port}..."
+
+      rack_env = {
+        "LAZULI_APP_ROOT" => @app_root,
+        "LAZULI_SOCKET" => @socket_path,
+        "LAZULI_RELOAD_TOKEN" => token,
+        "LAZULI_RELOAD_ENABLED" => @reload ? "1" : nil,
+        "LAZULI_RELOAD_TOKEN_PATH" => @reload_token_path
+      }.compact
+
+      if @yjit
+        rack_env["RUBYOPT"] = [ENV["RUBYOPT"], "--yjit"].compact.join(" ")
+      end
+
       @pids[:rack] = spawn_with_retry(:rack) do
         Process.spawn(
-          {
-            "LAZULI_APP_ROOT" => @app_root,
-            "LAZULI_SOCKET" => @socket_path,
-            "LAZULI_RELOAD_TOKEN" => token,
-            "LAZULI_RELOAD_ENABLED" => @reload ? "1" : nil,
-            "LAZULI_RELOAD_TOKEN_PATH" => @reload_token_path
-          },
+          rack_env,
           *rack_cmd,
           chdir: @app_root,
           out: $stdout,
