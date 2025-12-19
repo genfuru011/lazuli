@@ -230,7 +230,50 @@ DOM 統合：
 
 ---
 
-## 9. 未決事項
+## 9. クライアント専用状態（Theme など）
+
+Lazuli の「Server/DB が真」は **ドメイン状態**（例：Todos）に適用する原則であり、
+Theme（ライト/ダーク）や UI 開閉のような **クライアント専用の UI 状態**は別枠で扱えます。
+
+- UI 状態は `createSignal()` で管理して OK。
+- 永続先は DB ではなく、`localStorage` / cookie 程度で十分。
+- ページ全体に効く UI 状態（theme / toast / nav 開閉など）は「クライアント側グローバル」に持ってよい。
+
+### 9.1 `localStorage` に入れるものの原則
+
+- **基本 OK**：theme / 表示密度 / dismissed banner / UI の折りたたみ / 下書き（draft）
+- **慎重**：権限、課金状態、在庫、Todos 一覧など「サーバが真のデータ」をフルコピーして保持
+- **避ける**：認証トークン等の機微情報（特に XSS リスクが上がるため）
+
+FOUC（初期チラつき）を避けたい場合は、theme を cookie にも保存し、サーバが `<html data-theme=...>` を最初から出せるようにします。
+
+---
+
+## 10. Turbo なしでも使えるか
+
+使えます。Turbo は「成功時にサーバの正へ収束させる」ための選択肢の 1 つです。
+Turbo なしの場合の収束パターン：
+
+1. **JSON を返す** → 返ってきた値で signals の state を確定更新
+2. **HTML 断片を返す** → `morph` 戦略で該当 slot に差分適用
+3. **何も返さない** → optimistic の状態を確定（UI-only 操作ならこれで十分）
+
+---
+
+## 11. Island 以外でも使えるか
+
+設計自体は Island 以外でも動きます（ページ全体を 1 root として `render()` して SPA 的に使うことも可能）。
+ただし、Island 前提を外すと次のコストが増えます。
+
+- `render()` の再評価範囲が大きくなり、`replace` は厳しくなる（`morph` 寄りになる）
+- ドメイン状態をクライアントで二重管理しがちで、整合性が難しくなる
+- ルーティング/データ取得/キャッシュ/並行操作など、クライアント側の責務が増える
+
+Lazuli の強み（HTML First / Server as truth）を活かすなら、まずは **Island（小さな範囲）**での利用を推奨します。
+
+---
+
+## 12. 未決事項
 
 - 命名：`createSignal/createEffect`（Solid 風） vs `signal/effect`（Preact 風）
 - `render()` は `{ dispose }` を返すべきか？
