@@ -11,9 +11,14 @@ class UsersResource < Lazuli::Resource
   end
 
   def create
+    UserRepository.create(name: params[:name].to_s)
+    redirect("/users")
+  end
+
+  def create_stream
     user = UserRepository.create(name: params[:name].to_s)
 
-    stream_or(redirect_to("/users")) do |t|
+    stream do |t|
       # Show prepend + before/after in one place.
       t.prepend "users_list", "components/UserRow", user: user
 
@@ -29,9 +34,19 @@ class UsersResource < Lazuli::Resource
 
   def destroy
     if params[:id]
+      UserRepository.delete(params[:id])
+      return redirect("/users")
+    end
+
+    UserRepository.clear
+    redirect("/users")
+  end
+
+  def destroy_stream
+    if params[:id]
       user = UserRepository.delete(params[:id])
 
-      return stream_or(redirect_to("/users")) do |t|
+      return stream do |t|
         t.remove "user_#{params[:id]}"
 
         t.remove "notice"
@@ -47,7 +62,7 @@ class UsersResource < Lazuli::Resource
     # DELETE /users -> batch delete demo (targets)
     UserRepository.clear
 
-    stream_or(redirect_to("/users")) do |t|
+    stream do |t|
       t.remove "#users_list li"
       t.remove "notice"
       t.remove "users_footer"

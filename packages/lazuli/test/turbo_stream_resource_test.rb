@@ -7,7 +7,11 @@ require "lazuli/turbo_stream"
 
 class MyResource < Lazuli::Resource
   def create
-    turbo_stream_or(redirect_to("/")) do |t|
+    redirect("/")
+  end
+
+  def create_stream
+    stream do |t|
       t.prepend "list", fragment: "components/Row", props: { id: 1 }
       t.before "list", fragment: "components/Row", props: { id: 2 }
       t.after "list", fragment: "components/Row", props: { id: 3 }

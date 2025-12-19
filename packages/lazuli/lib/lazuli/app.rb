@@ -67,15 +67,21 @@ module Lazuli
 
         resource = resource_class.new(merged_params, request: req)
 
-        unless resource.respond_to?(action)
+        chosen_action = action
+        if accepts_turbo_stream?(req)
+          stream_action = "#{action}_stream"
+          chosen_action = stream_action if resource.respond_to?(stream_action)
+        end
+
+        unless resource.respond_to?(chosen_action)
           allow = allowed_methods(resource, segments)
           headers = { "content-type" => "text/plain" }
           headers["allow"] = allow.join(", ") unless allow.empty?
-          return [405, headers, ["Action not allowed: #{resource_name}##{action}"]]
+          return [405, headers, ["Action not allowed: #{resource_name}##{chosen_action}"]]
         end
 
         action_t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        result = resource.public_send(action)
+        result = resource.public_send(chosen_action)
         action_ms = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - action_t0) * 1000.0
 
         if result.is_a?(Lazuli::TurboStream)

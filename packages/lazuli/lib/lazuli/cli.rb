@@ -337,10 +337,15 @@ module Lazuli
           end
 
           def create
+            #{repo_module}.create(params[:#{underscore(name)}] || {})
+            redirect("#{route}")
+          end
+
+          def create_stream
             item = #{repo_module}.create(params[:#{underscore(name)}] || {})
 
             # Ruby returns operations; Deno renders the <template> fragment.
-            stream_or(redirect_to("#{route}")) do |t|
+            stream do |t|
               t.prepend :#{underscore(name)}s_list, "components/#{classified}Row", #{underscore(name)}: item
               t.update :flash, "components/FlashMessage", message: "Created"
             end
@@ -352,9 +357,14 @@ module Lazuli
           end
 
           def destroy
-            item = #{repo_module}.delete(params[:id])
+            #{repo_module}.delete(params[:id])
+            redirect("#{route}")
+          end
 
-            stream_or(redirect_to("#{route}")) do |t|
+          def destroy_stream
+            #{repo_module}.delete(params[:id])
+
+            stream do |t|
               t.remove "#{underscore(name)}_\#{params[:id]}"
               t.update :flash, "components/FlashMessage", message: "Deleted"
             end

@@ -24,7 +24,7 @@ class CliGenerateResourceTest < Minitest::Test
       resource = File.read(File.join(app_root, "app", "resources", "book_resource.rb"))
       assert_includes resource, "class BookResource"
       assert_includes resource, "Render \"book\""
-      assert_includes resource, "stream_or(redirect_to(\"/books\"))"
+      assert_includes resource, "def create_stream"
 
       repo = File.read(File.join(app_root, "app", "repositories", "book_repository.rb"))
       %w[all find create update delete].each do |method|
@@ -47,7 +47,7 @@ class CliGenerateResourceTest < Minitest::Test
       Lazuli::CLI.run(["generate", "resource", "book", app_root, "--route", "/library/books"])
 
       resource = File.read(File.join(app_root, "app", "resources", "book_resource.rb"))
-      assert_includes resource, "stream_or(redirect_to(\"/library/books\"))"
+      assert_includes resource, "redirect(\"/library/books\")"
     end
   end
 end

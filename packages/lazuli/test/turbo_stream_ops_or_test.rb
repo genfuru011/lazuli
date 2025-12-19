@@ -1,48 +1,52 @@
 require "test_helper"
+require "rack"
+require "lazuli/app"
 require "lazuli/resource"
+require "lazuli/renderer"
 require "lazuli/turbo_stream"
 
-class TurboStreamOpsOrTest < Minitest::Test
-  class RequestStub
-    def initialize(accept)
-      @accept = accept
-    end
-
-    def get_header(key)
-      return @accept if key == "HTTP_ACCEPT"
-      nil
-    end
+class DispatchResource < Lazuli::Resource
+  def create
+    redirect("/")
   end
 
-  class EmptyRequest
-    def get_header(_key)
-      nil
+  def create_stream
+    stream do |t|
+      t.update "flash", fragment: "components/Flash", props: { message: "hi" }
     end
   end
+end
 
-  def test_stream_ops_or_returns_turbo_stream_for_turbo_request
-    req = RequestStub.new("text/vnd.turbo-stream.html, text/html")
-    res = Lazuli::Resource.new({}, request: req).stream_ops_or(:fallback) do |t|
-      t.prepend "list", fragment: "components/Row", props: { id: 1 }
-    end
-
-    assert_kind_of Lazuli::TurboStream, res
-    assert_equal :prepend, res.operations.first[:action]
+class TurboStreamDispatchTest < Minitest::Test
+  def setup
+    @app = Lazuli::App.new(root: Dir.pwd)
   end
 
-  def test_stream_ops_or_returns_fallback_for_non_turbo
-    res = Lazuli::Resource.new({}, request: EmptyRequest.new).stream_ops_or(:fallback) do |t|
-      t.prepend "list", fragment: "components/Row", props: { id: 1 }
+  def test_accept_turbo_prefers_stream_action
+    captured = nil
+    original = Lazuli::Renderer.method(:render_turbo_stream)
+    Lazuli::Renderer.define_singleton_method(:render_turbo_stream) do |ops|
+      captured = ops
+      "<turbo-stream></turbo-stream>"
     end
 
-    assert_equal :fallback, res
+    status, headers, _body = @app.call(
+      Rack::MockRequest.env_for("/dispatch", method: "POST", "HTTP_ACCEPT" => "text/vnd.turbo-stream.html, text/html")
+    )
+
+    assert_equal 200, status
+    assert_equal "text/vnd.turbo-stream.html; charset=utf-8", headers["content-type"]
+    assert_equal :update, captured&.first&.dig(:action)
+  ensure
+    Lazuli::Renderer.define_singleton_method(:render_turbo_stream, &original)
   end
 
-  def test_format_param_enables_stream_ops_or
-    res = Lazuli::Resource.new({ format: "turbo_stream" }, request: EmptyRequest.new).stream_ops_or(:fallback) do |t|
-      t.prepend "list", fragment: "components/Row", props: { id: 1 }
-    end
+  def test_non_turbo_uses_html_action
+    status, headers, _body = @app.call(
+      Rack::MockRequest.env_for("/dispatch", method: "POST", "HTTP_ACCEPT" => "text/html")
+    )
 
-    assert_kind_of Lazuli::TurboStream, res
+    assert_equal 303, status
+    assert_equal "/", headers["location"]
   end
 end

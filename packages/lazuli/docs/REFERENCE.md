@@ -174,23 +174,29 @@ end
 
 - `page` は `app/pages/<page>.tsx`（拡張子なし）に対応。
 
-### 5.2 `redirect_to(location, status: nil)`
+### 5.2 `redirect(location, status: nil)` / `redirect_to(location, status: nil)`
 
 Rackレスポンス `[status, headers, body]` を返すヘルパ。
 
 - `GET` は 302、`POST/PUT/PATCH/DELETE` は 303 がデフォルト。
 
-### 5.3 Turbo Streams: `stream {}` / `stream_or(fallback) {}`
+### 5.3 Turbo Streams: `stream {}` と `*_stream` アクション
 
 - Ruby は **operations を積むだけ**。
 - `<template>` の中身HTMLは **Denoが JSX fragment から生成**。
+- リクエストが Turbo Streams（`Accept: text/vnd.turbo-stream.html` / `?format=turbo_stream`）の場合、Router は **`<action>_stream` を優先して呼びます**（無ければ通常の `<action>`）。
 
 ```rb
 class UsersResource < Lazuli::Resource
   def create
+    UserRepository.create(name: params[:name])
+    redirect("/users")
+  end
+
+  def create_stream
     user = UserRepository.create(name: params[:name])
 
-    stream_or(redirect_to("/users")) do |t|
+    stream do |t|
       t.prepend :users_list, "components/UserRow", user: user
       t.update  :flash,      "components/FlashMessage", message: "Created"
     end
@@ -199,7 +205,6 @@ end
 ```
 
 - `stream` は `turbo_stream` の alias。
-- `stream_or` は `turbo_stream_or` の alias。
 
 ---
 

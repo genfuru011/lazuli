@@ -62,16 +62,6 @@ module Lazuli
       stream
     end
 
-    # Helper to avoid explicit branching in actions.
-    # Usage:
-    #   turbo_stream_or(redirect_to("/")) { |s| s.prepend ... }
-    def turbo_stream_or(fallback_response, error_target: "flash", error_targets: nil, &block)
-      if turbo_stream?
-        turbo_stream(error_target: error_target, error_targets: error_targets, &block)
-      else
-        fallback_response
-      end
-    end
 
     def turbo_stream_ops
       stream = Lazuli::TurboStream.new
@@ -79,19 +69,13 @@ module Lazuli
       stream
     end
 
-    def turbo_stream_ops_or(fallback_response, &block)
-      if turbo_stream?
-        turbo_stream_ops(&block)
-      else
-        fallback_response
-      end
-    end
-
     alias stream_ops turbo_stream_ops
-    alias stream_ops_or turbo_stream_ops_or
 
     alias stream turbo_stream
-    alias stream_or turbo_stream_or
+
+    def redirect(location, status: nil)
+      redirect_to(location, status: status)
+    end
 
     def redirect_to(location, status: nil)
       status ||= begin
