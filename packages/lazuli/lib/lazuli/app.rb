@@ -67,16 +67,16 @@ module Lazuli
 
         resource = resource_class.new(merged_params, request: req)
 
-        chosen_action = action
-        if accepts_turbo_stream?(req)
-          stream_action = "#{action}_stream"
-          chosen_action = stream_action if resource.respond_to?(stream_action)
-        end
+        requested_stream = accepts_turbo_stream?(req)
+        stream_action = "#{action}_stream"
+        chosen_action = (requested_stream && resource.respond_to?(stream_action)) ? stream_action : action
+        stream_fallback = requested_stream && chosen_action == action
 
         unless resource.respond_to?(chosen_action)
           allow = allowed_methods(resource, segments)
           headers = { "content-type" => "text/plain" }
           headers["allow"] = allow.join(", ") unless allow.empty?
+          add_dispatch_headers!(headers, chosen_action: chosen_action, stream_action: stream_action, stream_fallback: stream_fallback)
           return [405, headers, ["Action not allowed: #{resource_name}##{chosen_action}"]]
         end
 
@@ -91,6 +91,7 @@ module Lazuli
 
           rendered = Lazuli::Renderer.render_turbo_stream_rendered(result.operations)
           headers = { "content-type" => "text/vnd.turbo-stream.html; charset=utf-8", "vary" => "accept" }
+          add_dispatch_headers!(headers, chosen_action: chosen_action, stream_action: stream_action, stream_fallback: stream_fallback)
           merge_server_timing!(headers, rendered.headers["server-timing"])
           merge_server_timing!(headers, format("action;dur=%.1f", action_ms))
           merge_server_timing!(headers, format("app;dur=%.1f", (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000.0))
@@ -98,11 +99,14 @@ module Lazuli
         end
 
         if result.is_a?(Array) && result.length == 3
+          headers = result[1]
+          add_dispatch_headers!(headers, chosen_action: chosen_action, stream_action: stream_action, stream_fallback: stream_fallback)
           return result
         end
 
         if result.is_a?(Lazuli::Renderer::Rendered)
           headers = { "content-type" => "text/html" }
+          add_dispatch_headers!(headers, chosen_action: chosen_action, stream_action: stream_action, stream_fallback: stream_fallback)
           merge_server_timing!(headers, result.headers["server-timing"])
           merge_server_timing!(headers, format("action;dur=%.1f", action_ms))
           merge_server_timing!(headers, format("app;dur=%.1f", (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000.0))
@@ -110,6 +114,7 @@ module Lazuli
         end
 
         headers = { "content-type" => "text/html" }
+        add_dispatch_headers!(headers, chosen_action: chosen_action, stream_action: stream_action, stream_fallback: stream_fallback)
         merge_server_timing!(headers, format("action;dur=%.1f", action_ms))
         merge_server_timing!(headers, format("app;dur=%.1f", (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000.0))
         [200, headers, [result.to_s]]
@@ -180,6 +185,14 @@ module Lazuli
       allow << "PATCH" if resource.respond_to?("update") || resource.respond_to?("update_stream")
       allow << "DELETE" if resource.respond_to?("destroy") || resource.respond_to?("destroy_stream")
       allow
+    end
+
+    def add_dispatch_headers!(headers, chosen_action:, stream_action:, stream_fallback:)
+      return headers unless ENV["LAZULI_DEBUG"] == "1"
+
+      headers["x-lazuli-action"] = chosen_action.to_s
+      headers["x-lazuli-stream-fallback"] = stream_action.to_s if stream_fallback
+      headers
     end
 
     def merge_server_timing!(headers, value)

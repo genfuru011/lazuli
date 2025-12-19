@@ -17,6 +17,12 @@ class DispatchResource < Lazuli::Resource
   end
 end
 
+class NostreamResource < Lazuli::Resource
+  def create
+    redirect("/")
+  end
+end
+
 class TurboStreamDispatchTest < Minitest::Test
   def setup
     @app = Lazuli::App.new(root: Dir.pwd)
@@ -48,5 +54,20 @@ class TurboStreamDispatchTest < Minitest::Test
 
     assert_equal 303, status
     assert_equal "/", headers["location"]
+  end
+
+  def test_debug_header_shows_stream_fallback
+    old = ENV["LAZULI_DEBUG"]
+    ENV["LAZULI_DEBUG"] = "1"
+
+    status, headers, _body = @app.call(
+      Rack::MockRequest.env_for("/nostream", method: "POST", "HTTP_ACCEPT" => "text/vnd.turbo-stream.html")
+    )
+
+    assert_equal 303, status
+    assert_equal "create", headers["x-lazuli-action"]
+    assert_equal "create_stream", headers["x-lazuli-stream-fallback"]
+  ensure
+    ENV["LAZULI_DEBUG"] = old
   end
 end
